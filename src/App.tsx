@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import { X } from 'lucide-react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingSpinner } from './components/LoadingSpinner';
@@ -13,25 +12,15 @@ import { DeepDiveTab } from './components/tabs/DeepDiveTab';
 import { ExplorerTab } from './components/tabs/ExplorerTab';
 import { DatasetsTab } from './components/tabs/DatasetsTab';
 import { SettingsTab } from './components/tabs/SettingsTab';
-import { DataRow } from './types';
 import { WelcomeScreen } from './components/WelcomeScreen';
 
 function DashboardContent() {
-  const { state, setActiveTab, loadSampleData } = useApp();
+  // Hooks must come first, before any return
+  const { state, setActiveTab } = useApp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
 
-  // Show loading spinner while connecting to database
-  if (state.isLoading && state.datasets.length === 0) {
-    return (
-      <LoadingSpinner 
-        message="Connecting to database..." 
-        type="database"
-        className="min-h-screen"
-      />
-    );
-  }
   // Listen for file upload events from the datasets tab
   useEffect(() => {
     const handleOpenFileUpload = () => setShowFileUpload(true);
@@ -39,18 +28,35 @@ function DashboardContent() {
     return () => window.removeEventListener('openFileUpload', handleOpenFileUpload);
   }, []);
 
+  // Listen for database changes (from realtime subscriptions)
+  useEffect(() => {
+    const handleDatabaseChange = (event: CustomEvent) => {
+      console.log('Database change detected in App:', event.detail);
+      // UI feedback if needed
+    };
+    window.addEventListener('supabase-data-changed', handleDatabaseChange as EventListener);
+    return () => {
+      window.removeEventListener('supabase-data-changed', handleDatabaseChange as EventListener);
+    };
+  }, []);
+
+  // Now you can safely return early based on loading state
+  if (state.isLoading && state.datasets.length === 0) {
+    return (
+      <LoadingSpinner
+        message="Connecting to database..."
+        type="database"
+        className="min-h-screen"
+      />
+    );
+  }
+
   const renderTabContent = () => {
-    // Show welcome screen only if no datasets are loaded
     if (state.datasets.length === 0 && !showFileUpload) {
-      return (
-        <WelcomeScreen 
-          onFileUpload={() => setShowFileUpload(true)}
-        />
-      );
+      return <WelcomeScreen onFileUpload={() => setShowFileUpload(true)} />;
     }
 
     const filteredData = state.filteredData;
-
     switch (state.activeTab) {
       case 'overview':
         return <OverviewTab data={filteredData} />;
@@ -70,35 +76,25 @@ function DashboardContent() {
     }
   };
 
-  // Show welcome screen when no datasets are loaded and not uploading
+  // Early return for welcome screen
   if (state.datasets.length === 0 && !showFileUpload) {
-    return (
-      <WelcomeScreen 
-        onFileUpload={() => setShowFileUpload(true)}
-      />
-    );
+    return <WelcomeScreen onFileUpload={() => setShowFileUpload(true)} />;
   }
 
-  // Show file upload modal
+  // Early return for file upload modal
   if (showFileUpload) {
     const handleClose = () => setShowFileUpload(false);
     const handleContinue = () => {
       setShowFileUpload(false);
-      // Switch to overview tab after upload
       setActiveTab('overview');
     };
-    
-    return (
-      <MultiFileUpload 
-        onClose={handleClose}
-        onContinue={handleContinue}
-      />
-    );
+    return <MultiFileUpload onClose={handleClose} onContinue={handleContinue} />;
   }
 
+  // Main dashboard render
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <Sidebar 
+      <Sidebar
         isCollapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         isMobileOpen={mobileSidebarOpen}
@@ -106,21 +102,19 @@ function DashboardContent() {
       />
 
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
-        <Header 
+        <Header
           onMobileMenuToggle={() => setMobileSidebarOpen(true)}
           onUploadNewDataset={() => setShowFileUpload(true)}
         />
-        <main className={`p-4 lg:p-6 transition-all duration-300`} id="dashboard-content">
-          <div className="max-w-7xl mx-auto">
-            {renderTabContent()}
-          </div>
+        <main className="p-4 lg:p-6 transition-all duration-300" id="dashboard-content">
+          <div className="max-w-7xl mx-auto">{renderTabContent()}</div>
         </main>
       </div>
     </div>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
       <Router>
@@ -131,5 +125,3 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-export default App;

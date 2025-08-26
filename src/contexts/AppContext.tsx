@@ -16,7 +16,6 @@ interface AppState {
   activeTab: TabType;
   isLoading: boolean;
   error: string | null;
-  sampleDataLoaded: boolean;
   isConnectedToDatabase: boolean;
   databaseError: string | null;
 }
@@ -35,7 +34,6 @@ type AppAction =
   | { type: 'SET_ACTIVE_TAB'; payload: TabType }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'LOAD_SAMPLE_DATA' }
   | { type: 'SET_DATABASE_CONNECTION'; payload: boolean }
   | { type: 'SET_DATABASE_ERROR'; payload: string | null }
   | { type: 'SYNC_FROM_DATABASE'; payload: Dataset[] };
@@ -66,7 +64,6 @@ const initialState: AppState = {
   activeTab: 'overview',
   isLoading: false,
   error: null,
-  sampleDataLoaded: false,
   isConnectedToDatabase: false,
   databaseError: null,
 };
@@ -162,9 +159,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     
-    case 'LOAD_SAMPLE_DATA':
-      return { ...state, sampleDataLoaded: true };
-    
     case 'SET_DATABASE_CONNECTION':
       return { ...state, isConnectedToDatabase: action.payload };
     
@@ -212,7 +206,6 @@ const AppContext = createContext<{
     data: FlexibleDataRow[];
     color: string;
   }>;
-  loadSampleData: () => void;
   saveFilterSet: (name: string) => void;
   loadFilterSet: (id: string) => void;
   deleteFilterSet: (id: string) => void;
@@ -220,6 +213,13 @@ const AppContext = createContext<{
   uploadToDatabase: (tableName: TableName, data: FlexibleDataRow[]) => Promise<boolean>;
   syncFromDatabase: () => Promise<void>;
 } | undefined>(undefined);
+
+// Component that handles realtime subscriptions safely
+function RealtimeSubscriptionHandler({ children }: { children: ReactNode }) {
+  // Now that the context is available, we can call the hook
+  useRealtimeSubscriptions();
+  return <>{children}</>;
+}
 
 // Provider component
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -231,9 +231,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetch: refetchSupabaseData,
     uploadData 
   } = useSupabaseData();
-  
-  // Initialize real-time subscriptions
-  useRealtimeSubscriptions();
 
   // Initialize state from localStorage/sessionStorage if available
   const loadInitialState = () => {
@@ -277,6 +274,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
   
   const [state, dispatch] = useReducer(appReducer, loadInitialState());
+
+
+  useEffect(() => {
+    const handleDatabaseChange = async () => {
+      await refetchSupabaseData();
+    };
+    window.addEventListener('supabase-data-changed', handleDatabaseChange);
+    return () => {
+      window.removeEventListener('supabase-data-changed', handleDatabaseChange);
+    };
+  }, [refetchSupabaseData]);
+
 
   // Sync Supabase data with local state
   useEffect(() => {
@@ -472,53 +481,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
   };
 
-  const loadSampleData = () => {
-    // Generate flexible sample data
-    const sampleData: FlexibleDataRow[] = [
-      {
-        Date: '2024-01-15',
-        Name: 'John Doe',
-        Address: 'Mumbai, Maharashtra',
-        Quantity: 150,
-        Price: 25000,
-        'Buyer Type': 'B2C',
-      },
-      {
-        Date: '2024-01-16',
-        Name: 'Jane Smith',
-        Address: 'Delhi, Delhi',
-        Quantity: 200,
-        Price: 45000,
-        'Buyer Type': 'B2B',
-      },
-    ];
-
-    // Define the same color palette used in MultiFileUpload
-    const DATASET_COLORS = [
-      '#3b82f6', '#7ab839', '#f97316', '#ef4444', '#1A2885',
-      '#06b6d4', '#f59e0b', '#dc2626', '#84cc16', '#059669'
-    ];
-
-    const sampleDataset: Dataset = {
-      id: 'sample-dataset',
-      name: 'Sample Dataset',
-      data: sampleData,
-      fileName: 'sample-data.csv',
-      fileSize: 1024,
-      uploadDate: new Date().toISOString(),
-      status: 'valid',
-      rowCount: sampleData.length,
-      validationSummary: 'Sample data loaded successfully',
-      color: ColorManager.getDatasetColor('Sample Dataset'),
-      preview: sampleData.slice(0, 5),
-      dataType: 'sales',
-      detectedColumns: Object.keys(sampleData[0] || {}),
-    };
-
-    dispatch({ type: 'ADD_DATASET', payload: sampleDataset });
-    dispatch({ type: 'LOAD_SAMPLE_DATA' });
-  };
-
   const saveFilterSet = (name: string) => {
     const newFilterSet = {
       id: Math.random().toString(36).substr(2, 9),
@@ -613,7 +575,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearDrillDownFilters,
       clearGlobalFilters,
       getMultiDatasetData,
-      loadSampleData,
       saveFilterSet,
       loadFilterSet,
       deleteFilterSet,
@@ -621,15 +582,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       uploadToDatabase: uploadData,
       syncFromDatabase: refetchSupabaseData,
     }}>
-      {children}
+      <RealtimeSubscriptionHandler>
+        {children}
+      </RealtimeSubscriptionHandler>
     </AppContext.Provider>
   );
 }
 
-// Custom hook to use the context
 export function useApp() {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;

@@ -12,6 +12,15 @@ interface UseSupabaseDataReturn {
   uploadData: (tableName: TableName, data: FlexibleDataRow[]) => Promise<boolean>;
 }
 
+// Move detectDataType outside as a standalone function
+const detectDataType = (tableName: string): 'sales' | 'production' | 'stock' | 'unknown' => {
+  const lowerName = tableName.toLowerCase();
+  if (lowerName.includes('stock')) return 'stock';
+  if (lowerName.includes('production')) return 'production';
+  if (lowerName.includes('fom') || lowerName.includes('lfom')) return 'sales';
+  return 'unknown';
+};
+
 export function useSupabaseData(): UseSupabaseDataReturn {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +33,7 @@ export function useSupabaseData(): UseSupabaseDataReturn {
     // Convert database records to FlexibleDataRow format
     const data: FlexibleDataRow[] = records.map(record => {
       const converted: FlexibleDataRow = {};
-      Object.entries(record).forEach(([key, value]) => {
+      Object.entries(record).forEach(([key, value]: [string, any]) => {
         converted[key] = value;
       });
       return converted;
@@ -42,62 +51,75 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       validationSummary: `${records.length} records loaded from database`,
       color: ColorManager.getDatasetColor(tableName),
       preview: data.slice(0, 5),
-      dataType: this.detectDataType(tableName),
+      dataType: detectDataType(tableName), // Fixed: removed 'this.'
       detectedColumns: records.length > 0 ? Object.keys(records[0]) : [],
     };
   }, []);
-
-  const detectDataType = (tableName: string): 'sales' | 'production' | 'stock' | 'unknown' => {
-    const lowerName = tableName.toLowerCase();
-    if (lowerName.includes('stock')) return 'stock';
-    if (lowerName.includes('production')) return 'production';
-    if (lowerName.includes('fom') || lowerName.includes('lfom')) return 'sales';
-    return 'unknown';
-  };
 
   const fetchAllData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Check if DatabaseService exists
+      if (!DatabaseService || typeof DatabaseService.fetchAllData !== 'function') {
+        throw new Error('DatabaseService is not properly initialized');
+      }
+
       const result = await DatabaseService.fetchAllData();
       
-      if (result.errors.length > 0) {
+      if (!result) {
+        throw new Error('No result returned from DatabaseService');
+      }
+
+      if (result.errors && result.errors.length > 0) {
+        console.warn('Errors from DatabaseService:', result.errors);
         setError(`Some data could not be loaded: ${result.errors.join(', ')}`);
       }
 
       const newDatasets: Dataset[] = [];
 
-      // Convert each table's data to datasets
-      if (result.fom.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.FOM, result.fom));
-      }
-      
-      if (result.lfom.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.LFOM, result.lfom));
-      }
-      
-      if (result.mdaClaim.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.MDA_CLAIM, result.mdaClaim));
-      }
-      
-      if (result.posLfom.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_LFOM, result.posLfom));
-      }
-      
-      if (result.posFom.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_FOM, result.posFom));
-      }
-      
-      if (result.stock.length > 0) {
-        newDatasets.push(convertDatabaseRecordsToDataset(TABLES.STOCK, result.stock));
+      // Convert each table's data to datasets with better error handling
+      try {
+        if (result.fom && result.fom.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.FOM, result.fom));
+        }
+        
+        if (result.lfom && result.lfom.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.LFOM, result.lfom));
+        }
+        
+        if (result.mdaClaim && result.mdaClaim.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.MDA_CLAIM, result.mdaClaim));
+        }
+        
+        if (result.posLfom && result.posLfom.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_LFOM, result.posLfom));
+        }
+        
+        if (result.posFom && result.posFom.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_FOM, result.posFom));
+        }
+        
+        if (result.stock && result.stock.length > 0) {
+          newDatasets.push(convertDatabaseRecordsToDataset(TABLES.STOCK, result.stock));
+        }
+      } catch (conversionError) {
+        console.error('Error converting data to datasets:', conversionError);
+        setError('Error processing database records');
       }
 
       setDatasets(newDatasets);
+
+      // If no datasets were created but no errors, it means tables are empty
+      if (newDatasets.length === 0 && (!result.errors || result.errors.length === 0)) {
+        setError('Database connected but no data found in any tables');
+      }
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
       console.error('Error fetching data from Supabase:', err);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +156,7 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       }
 
       if (result.error) {
+        console.error('Upload error:', result.error);
         setError(result.error.message);
         return false;
       }
@@ -143,6 +166,7 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      console.error('Upload error:', err);
       setError(errorMessage);
       return false;
     } finally {
