@@ -51,7 +51,7 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       validationSummary: `${records.length} records loaded from database`,
       color: ColorManager.getDatasetColor(tableName),
       preview: data.slice(0, 5),
-      dataType: detectDataType(tableName), // Fixed: removed 'this.'
+      dataType: detectDataType(tableName),
       detectedColumns: records.length > 0 ? Object.keys(records[0]) : [],
     };
   }, []);
