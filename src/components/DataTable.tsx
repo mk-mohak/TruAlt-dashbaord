@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import { Search, SortAsc, SortDesc, Filter } from 'lucide-react';
+import { Search, SortAsc, SortDesc, Filter, Edit, Trash2 } from 'lucide-react';
 import { FlexibleDataRow } from '../types';
 import { DataProcessor } from '../utils/dataProcessing';
 import { useApp } from '../contexts/AppContext';
@@ -9,6 +9,11 @@ interface DataTableProps {
   data: FlexibleDataRow[];
   className?: string;
   tableId?: string;
+  onEdit?: (record: FlexibleDataRow) => void;
+  onDelete?: (record: FlexibleDataRow) => void;
+  selectedRecords?: string[];
+  onSelectionChange?: (selectedIds: string[]) => void;
+  showActions?: boolean;
 }
 
 interface ColumnConfig {
@@ -27,11 +32,28 @@ interface RowProps {
     filteredData: FlexibleDataRow[];
     columns: ColumnConfig[];
     currency: string;
+    onEdit?: (record: FlexibleDataRow) => void;
+    onDelete?: (record: FlexibleDataRow) => void;
+    selectedRecords?: string[];
+    onSelectionChange?: (selectedIds: string[]) => void;
+    showActions?: boolean;
   };
 }
 
 function Row({ index, style, data }: RowProps) {
   const row = data.filteredData[index];
+  const recordId = String(row.id || row['S.No.'] || index);
+  const isSelected = data.selectedRecords?.includes(recordId) || false;
+  
+  const handleSelectionChange = (checked: boolean) => {
+    if (!data.onSelectionChange || !data.selectedRecords) return;
+    
+    if (checked) {
+      data.onSelectionChange([...data.selectedRecords, recordId]);
+    } else {
+      data.onSelectionChange(data.selectedRecords.filter(id => id !== recordId));
+    }
+  };
   
   return (
     <div
@@ -40,6 +62,30 @@ function Row({ index, style, data }: RowProps) {
         index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'
       } hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors overflow-hidden`}
     >
+      {data.showActions && (
+        <div className="px-4 py-3 flex items-center space-x-2 flex-shrink-0" style={{ width: 120 }}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => handleSelectionChange(e.target.checked)}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <button
+            onClick={() => data.onEdit?.(row)}
+            className="p-1 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded transition-colors"
+            title="Edit record"
+          >
+            <Edit className="h-3 w-3 text-primary-600 dark:text-primary-400" />
+          </button>
+          <button
+            onClick={() => data.onDelete?.(row)}
+            className="p-1 hover:bg-error-100 dark:hover:bg-error-900/50 rounded transition-colors"
+            title="Delete record"
+          >
+            <Trash2 className="h-3 w-3 text-error-600 dark:text-error-400" />
+          </button>
+        </div>
+      )}
       {data.columns.map((column) => {
         const value = row[column.key];
         let displayValue = String(value || '');
@@ -66,7 +112,16 @@ function Row({ index, style, data }: RowProps) {
   );
 }
 
-export function DataTable({ data, className = '', tableId = 'data-table' }: DataTableProps) {
+export function DataTable({ 
+  data, 
+  className = '', 
+  tableId = 'data-table',
+  onEdit,
+  onDelete,
+  selectedRecords = [],
+  onSelectionChange,
+  showActions = false
+}: DataTableProps) {
   const { state } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{
@@ -231,6 +286,28 @@ export function DataTable({ data, className = '', tableId = 'data-table' }: Data
         {/* Header */}
         <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 overflow-x-auto">
           <div className="flex overflow-x-auto">
+            {showActions && (
+              <div
+                style={{ width: 120, minWidth: 120 }}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap flex-shrink-0"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedRecords.length === filteredAndSortedData.length && filteredAndSortedData.length > 0}
+                  onChange={(e) => {
+                    if (!onSelectionChange) return;
+                    if (e.target.checked) {
+                      const allIds = filteredAndSortedData.map((row, idx) => String(row.id || row['S.No.'] || idx));
+                      onSelectionChange(allIds);
+                    } else {
+                      onSelectionChange([]);
+                    }
+                  }}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 mr-2"
+                />
+                Actions
+              </div>
+            )}
             {columns.map((column) => (
               <div
                 key={column.key}
@@ -267,10 +344,15 @@ export function DataTable({ data, className = '', tableId = 'data-table' }: Data
               itemData={{
                 filteredData: filteredAndSortedData,
                 columns,
-                currency: state.settings.currency
+                currency: state.settings.currency,
+                onEdit,
+                onDelete,
+                selectedRecords,
+                onSelectionChange,
+                showActions
               }}
               width="100%"
-              style={{ minWidth: columns.reduce((sum, col) => sum + col.width, 0) }}
+              style={{ minWidth: columns.reduce((sum, col) => sum + col.width, 0) + (showActions ? 120 : 0) }}
             >
               {Row}
             </List>
@@ -281,6 +363,11 @@ export function DataTable({ data, className = '', tableId = 'data-table' }: Data
       <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
         <div className="overflow-hidden">
           Showing {filteredAndSortedData.length} of {data.length} rows
+          {selectedRecords.length > 0 && (
+            <span className="ml-4 text-primary-600 dark:text-primary-400">
+              {selectedRecords.length} selected
+            </span>
+          )}
         </div>
         
         {searchTerm || Object.values(columnFilters).some(Boolean) ? (

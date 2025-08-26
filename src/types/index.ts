@@ -115,7 +115,7 @@ export interface ExportOptions {
   quality?: 'low' | 'medium' | 'high';
 }
 
-export type TabType = 'overview' | 'comparison' | 'deepdive' | 'explorer' | 'datasets' | 'settings';
+export type TabType = 'overview' | 'data-management' | 'explorer' | 'datasets' | 'settings';
 
 export interface AppState {
   data: FlexibleDataRow[];
@@ -135,6 +135,8 @@ export interface AppState {
   chartInteractions: {
     [key: string]: any;
   };
+  user: any;
+  isAuthenticated: boolean;
 }
 
 export interface Dataset {

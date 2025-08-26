@@ -17,7 +17,8 @@ export class DatabaseService {
     try {
       const { data, error, count } = await supabase
         .from(tableName)
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .order('id', { ascending: false }); // Show newest first
 
       if (error) {
         console.error(`Error fetching ${tableName}:`, error);
@@ -53,9 +54,12 @@ export class DatabaseService {
     record: Partial<T>
   ): Promise<DatabaseResponse<T>> {
     try {
+      // Clean the record before insertion
+      const cleanedRecord = this.convertToTableRecord(record as FlexibleDataRow, tableName);
+      
       const { data, error } = await supabase
         .from(tableName)
-        .insert([record])
+        .insert([cleanedRecord])
         .select();
 
       if (error) {
@@ -147,9 +151,12 @@ export class DatabaseService {
     idColumn: string = 'id'
   ): Promise<DatabaseResponse<T>> {
     try {
+      // Clean the updates before applying
+      const cleanedUpdates = this.convertToTableRecord(updates as FlexibleDataRow, tableName);
+      
       const { data, error } = await supabase
         .from(tableName)
-        .update(updates)
+        .update(cleanedUpdates)
         .eq(idColumn, id)
         .select();
 

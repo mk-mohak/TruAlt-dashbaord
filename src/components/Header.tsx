@@ -18,6 +18,7 @@ import { ExportUtils } from '../utils/exportUtils';
 import { SavedFilters } from './SavedFilters';
 import { Database, Wifi, WifiOff } from 'lucide-react';
 import { DatabaseSyncIndicator } from './DatabaseSyncIndicator';
+import { useAuth } from '../hooks/useAuth';
 
 // Fixed color mapping function
 const getDatasetColorByName = (datasetName: string) => {
@@ -49,9 +50,11 @@ interface HeaderProps {
 
 export function Header({ onMobileMenuToggle, onUploadNewDataset }: HeaderProps) {
   const { state, setFilters, setSettings, clearGlobalFilters, syncFromDatabase } = useApp();
+  const { user, signOut } = useAuth();
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showUploadMenu, setShowUploadMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [tempFilters, setTempFilters] = useState({
     dateRange: { start: '', end: '' },
     selectedValues: {} as { [column: string]: string[] }
@@ -59,6 +62,7 @@ export function Header({ onMobileMenuToggle, onUploadNewDataset }: HeaderProps) 
   const uploadMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Click-away logic for menus
   useEffect(() => {
@@ -72,10 +76,13 @@ export function Header({ onMobileMenuToggle, onUploadNewDataset }: HeaderProps) 
       if (showExportMenu && exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
         setShowExportMenu(false);
       }
+      if (showUserMenu && userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showUploadMenu, showFilterMenu, showExportMenu]);
+  }, [showUploadMenu, showFilterMenu, showExportMenu, showUserMenu]);
 
   // Initialize temp filters when filter menu opens
   useEffect(() => {
@@ -405,6 +412,43 @@ export function Header({ onMobileMenuToggle, onUploadNewDataset }: HeaderProps) 
               <Sun className="h-5 w-5" />
             )}
           </button>
+
+          {/* User Menu */}
+          {user && (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                title="User menu"
+              >
+                <User className="h-5 w-5" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Signed in as
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

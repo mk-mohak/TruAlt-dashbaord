@@ -3,6 +3,7 @@ import { Dataset, FlexibleDataRow, FilterState, UserSettings, TabType } from '..
 import { ColorManager } from '../utils/colorManager';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useRealtimeSubscriptions } from '../hooks/useRealtimeSubscriptions';
+import { useAuth } from '../hooks/useAuth';
 import { TableName } from '../lib/supabase';
 
 // Define the state interface
@@ -18,6 +19,8 @@ interface AppState {
   error: string | null;
   isConnectedToDatabase: boolean;
   databaseError: string | null;
+  user: any;
+  isAuthenticated: boolean;
 }
 
 // Define action types
@@ -36,7 +39,9 @@ type AppAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_DATABASE_CONNECTION'; payload: boolean }
   | { type: 'SET_DATABASE_ERROR'; payload: string | null }
-  | { type: 'SYNC_FROM_DATABASE'; payload: Dataset[] };
+  | { type: 'SYNC_FROM_DATABASE'; payload: Dataset[] }
+  | { type: 'SET_USER'; payload: any }
+  | { type: 'SET_AUTHENTICATED'; payload: boolean };
 
 // Initial state
 const initialState: AppState = {
@@ -66,6 +71,8 @@ const initialState: AppState = {
   error: null,
   isConnectedToDatabase: false,
   databaseError: null,
+  user: null,
+  isAuthenticated: false,
 };
 
 // Helper function to combine data from active datasets
@@ -182,6 +189,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+    
+    case 'SET_AUTHENTICATED':
+      return { ...state, isAuthenticated: action.payload };
+    
     default:
       return state;
   }
@@ -223,6 +236,9 @@ function RealtimeSubscriptionHandler({ children }: { children: ReactNode }) {
 
 // Provider component
 export function AppProvider({ children }: { children: ReactNode }) {
+  // Initialize auth hook
+  const { user, isLoading: authLoading } = useAuth();
+  
   // Initialize Supabase hooks
   const { 
     datasets: supabaseDatasets, 
@@ -275,6 +291,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const [state, dispatch] = useReducer(appReducer, loadInitialState());
 
+  // Update auth state when user changes
+  useEffect(() => {
+    dispatch({ type: 'SET_USER', payload: user });
+    dispatch({ type: 'SET_AUTHENTICATED', payload: !!user });
+  }, [user]);
 
   useEffect(() => {
     const handleDatabaseChange = async () => {
@@ -289,6 +310,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Sync Supabase data with local state
   useEffect(() => {
+    // Only sync if user is authenticated
+    if (!user) return;
+    
     if (supabaseDatasets.length > 0) {
       dispatch({ type: 'SYNC_FROM_DATABASE', payload: supabaseDatasets });
       dispatch({ type: 'SET_DATABASE_CONNECTION', payload: true });
@@ -301,10 +325,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     dispatch({ type: 'SET_LOADING', payload: supabaseLoading });
-  }, [supabaseDatasets, supabaseError, supabaseLoading]);
+  }, [supabaseDatasets, supabaseError, supabaseLoading, user]);
 
   // Listen for real-time database changes
   useEffect(() => {
+    // Only listen if user is authenticated
+    if (!user) return;
+    
     const handleDatabaseChange = async () => {
       console.log('Database change detected, refreshing data...');
       await refetchSupabaseData();
@@ -314,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener('supabase-data-changed', handleDatabaseChange);
     };
-  }, [refetchSupabaseData]);
+  }, [refetchSupabaseData, user]);
 
   // Effect to apply filters whenever data or filters change
   useEffect(() => {

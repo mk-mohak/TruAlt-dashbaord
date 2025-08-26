@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AppProvider, useApp } from './contexts/AppContext';
+import { useAuth } from './hooks/useAuth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingSpinner } from './components/LoadingSpinner';
+import { LoginScreen } from './components/auth/LoginScreen';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MultiFileUpload } from './components/MultiFileUpload';
 import { OverviewTab } from './components/tabs/OverviewTab';
-import { ComparisonTab } from './components/tabs/ComparisonTab';
-import { DeepDiveTab } from './components/tabs/DeepDiveTab';
+import { DataManagementTab } from './components/data/DataManagementTab';
 import { ExplorerTab } from './components/tabs/ExplorerTab';
 import { DatasetsTab } from './components/tabs/DatasetsTab';
 import { SettingsTab } from './components/tabs/SettingsTab';
@@ -17,6 +18,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 function DashboardContent() {
   // Hooks must come first, before any return
   const { state, setActiveTab } = useApp();
+  const { user, isLoading: authLoading } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
@@ -41,6 +43,19 @@ function DashboardContent() {
   }, []);
 
   // Now you can safely return early based on loading state
+  if (authLoading) {
+    return (
+      <LoadingSpinner
+        message="Checking authentication..."
+        className="min-h-screen"
+      />
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
   if (state.isLoading && state.datasets.length === 0) {
     return (
       <LoadingSpinner
@@ -60,10 +75,8 @@ function DashboardContent() {
     switch (state.activeTab) {
       case 'overview':
         return <OverviewTab data={filteredData} />;
-      case 'comparison':
-        return <ComparisonTab data={filteredData} />;
-      case 'deepdive':
-        return <DeepDiveTab data={filteredData} />;
+      case 'data-management':
+        return <DataManagementTab />;
       case 'explorer':
         return <ExplorerTab data={filteredData} />;
       case 'datasets':

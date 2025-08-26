@@ -1,16 +1,17 @@
 import React from 'react';
 import { 
   BarChart3, 
-  Building2, 
-  Package, 
+  Edit3, 
   Database, 
   Settings,
   Menu,
   X,
-  Library
+  Library,
+  LogOut
 } from 'lucide-react';
 import { TabType } from '../types';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../hooks/useAuth';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -27,16 +28,10 @@ const navigationItems = [
     emoji: '📊',
   },
   {
-    id: 'comparison' as TabType,
-    label: 'Plant Comparison',
-    icon: Building2,
-    emoji: '🏭',
-  },
-  {
-    id: 'deepdive' as TabType,
-    label: 'Product Deep Dive',
-    icon: Package,
-    emoji: '🛍️',
+    id: 'data-management' as TabType,
+    label: 'Data Management',
+    icon: Edit3,
+    emoji: '✏️',
   },
   {
     id: 'explorer' as TabType,
@@ -60,6 +55,7 @@ const navigationItems = [
 
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileToggle }: SidebarProps) {
   const { state, setActiveTab } = useApp();
+  const { signOut, user } = useAuth();
 
   const handleTabClick = (tabId: TabType) => {
     setActiveTab(tabId);
@@ -163,6 +159,21 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileToggle }:
           {/* Footer */}
           {!isCollapsed && (
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              {/* User Info */}
+              {user && (
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {user.email}
+                  </p>
+                  <button
+                    onClick={signOut}
+                    className="mt-2 flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 transition-colors"
+                  >
+                    <LogOut className="h-3 w-3" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                 <p>TruAlt Analytics v1.0</p>
                 <p>© 2025 Analytics Dashboard</p>
