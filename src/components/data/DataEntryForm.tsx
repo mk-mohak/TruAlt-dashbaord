@@ -85,11 +85,25 @@ export function DataEntryForm({
       let result;
       
       if (isEdit && initialData) {
-        // Update existing record
-        const idColumn = tableName === TABLES.FOM || tableName === TABLES.LFOM ? 'S.No.' : 'id';
+        const idColumn = "id";
         const recordId = initialData[idColumn];
-        
-        result = await DatabaseService.updateRecord(tableName, recordId, data, idColumn);
+
+        // Check if recordId exists and is valid
+        if (recordId === null || recordId === undefined) {
+          setSubmitResult({
+            success: false,
+            message: "Record ID is missing. Cannot update record.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        result = await DatabaseService.updateRecord(
+          tableName,
+          recordId,
+          data,
+          idColumn
+        );
       } else {
         // Insert new record
         result = await DatabaseService.insertRecord(tableName, data);

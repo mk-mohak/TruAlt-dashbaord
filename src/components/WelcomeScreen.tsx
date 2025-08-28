@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onFileUpload }: WelcomeScreenProps) {
-  const { loadSampleData, state } = useApp();
+  const { state } = useApp();
 
   const features = [
     {
@@ -69,13 +69,6 @@ export function WelcomeScreen({ onFileUpload }: WelcomeScreenProps) {
             >
               <Upload className="h-5 w-5" />
               <span>{state.isConnectedToDatabase ? 'Upload to Database' : 'Upload Your Data'}</span>
-            </button>
-            
-            <button
-              onClick={loadSampleData}
-              className="btn-secondary text-lg px-8 py-4 transform hover:scale-105 transition-transform"
-            >
-              {state.isConnectedToDatabase ? 'Load from Database' : 'Try Sample Data'}
             </button>
           </div>
 

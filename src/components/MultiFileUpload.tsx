@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, FileText, X, CheckCircle, AlertTriangle, AlertCircle, Plus, Eye } from 'lucide-react';
 import { FileParser } from '../utils/fileParser';
-import { DataRow, Dataset } from '../types';
+import { FlexibleDataRow, Dataset } from '../types';
 import { useApp } from '../contexts/AppContext';
 import { ColorManager } from '../utils/colorManager';
 import { DataProcessor } from '../utils/dataProcessing';
@@ -19,7 +19,7 @@ interface UploadingFile {
   file: File;
   status: 'uploading' | 'validating' | 'complete' | 'error';
   progress: number;
-  data?: DataRow[];
+  data?: FlexibleDataRow[];
   error?: string;
   validationSummary?: string;
 }
@@ -308,7 +308,7 @@ export function MultiFileUpload({ onClose, onContinue, className = '' }: MultiFi
                         {file.status === 'complete' && file.data && (
                           <button
                             onClick={() => setShowDatabaseUpload({
-                              data: file.data,
+                              data: file.data || [],
                               fileName: file.file.name
                             })}
                             className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
