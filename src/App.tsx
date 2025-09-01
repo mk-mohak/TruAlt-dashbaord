@@ -1,54 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import { AppProvider, useApp } from './contexts/AppContext';
-import { useAuth } from './hooks/useAuth';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { LoadingSpinner } from './components/LoadingSpinner';
-import { LoginScreen } from './components/auth/LoginScreen';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { MultiFileUpload } from './components/MultiFileUpload';
-import { OverviewTab } from './components/tabs/OverviewTab';
-import { DataManagementTab } from './components/data/DataManagementTab';
-import { ExplorerTab } from './components/tabs/ExplorerTab';
-import { DatasetsTab } from './components/tabs/DatasetsTab';
-import { SettingsTab } from './components/tabs/SettingsTab';
-import { WelcomeScreen } from './components/WelcomeScreen';
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router } from "react-router-dom";
+import { AppProvider, useApp } from "./contexts/AppContext";
+import { useAuth } from "./hooks/useAuth";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LoadingSpinner } from "./components/LoadingSpinner";
+import { LoginScreen } from "./components/auth/LoginScreen";
+import { Sidebar } from "./components/Sidebar";
+import { Header } from "./components/Header";
+import { MultiFileUpload } from "./components/MultiFileUpload";
+import { OverviewTab } from "./components/tabs/OverviewTab";
+import { DataManagementTab } from "./components/data/DataManagementTab";
+import { ExplorerTab } from "./components/tabs/ExplorerTab";
+import { DatasetsTab } from "./components/tabs/DatasetsTab";
+import { SettingsTab } from "./components/tabs/SettingsTab";
+import { WelcomeScreen } from "./components/WelcomeScreen";
 
 function DashboardContent() {
-  // Hooks must come first, before any return
   const { state, setActiveTab } = useApp();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, role } = useAuth();
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
 
-  // Listen for file upload events from the datasets tab
+  // This effect sets the default tab based on the user's role after login.
+  useEffect(() => {
+    if (role && !state.activeTab) {
+      // Only set if no tab is currently active
+      if (role === "admin") {
+        setActiveTab("overview");
+      } else if (role === "operator") {
+        setActiveTab("data-management");
+      }
+    }
+  }, [role, state.activeTab, setActiveTab]);
+
   useEffect(() => {
     const handleOpenFileUpload = () => setShowFileUpload(true);
-    window.addEventListener('openFileUpload', handleOpenFileUpload);
-    return () => window.removeEventListener('openFileUpload', handleOpenFileUpload);
+    window.addEventListener("openFileUpload", handleOpenFileUpload);
+    return () =>
+      window.removeEventListener("openFileUpload", handleOpenFileUpload);
   }, []);
 
-  // Listen for database changes (from realtime subscriptions)
   useEffect(() => {
     const handleDatabaseChange = (event: CustomEvent) => {
-      console.log('Database change detected in App:', event.detail);
-      // UI feedback if needed
+      console.log("Database change detected in App:", event.detail);
     };
-    window.addEventListener('supabase-data-changed', handleDatabaseChange as EventListener);
+    window.addEventListener(
+      "supabase-data-changed",
+      handleDatabaseChange as EventListener
+    );
     return () => {
-      window.removeEventListener('supabase-data-changed', handleDatabaseChange as EventListener);
+      window.removeEventListener(
+        "supabase-data-changed",
+        handleDatabaseChange as EventListener
+      );
     };
   }, []);
 
-  // Now you can safely return early based on loading state
-  if (authLoading) {
+  // --- MODIFICATION: Wait for both user AND role to be loaded ---
+  if (authLoading || (user && !role)) {
     return (
-      <LoadingSpinner
-        message="Checking authentication..."
-        className="min-h-screen"
-      />
+      <LoadingSpinner message="Initializing..." className="min-h-screen" />
     );
   }
 
@@ -72,39 +85,46 @@ function DashboardContent() {
     }
 
     const filteredData = state.filteredData;
-    switch (state.activeTab) {
-      case 'overview':
-        return <OverviewTab data={filteredData} />;
-      case 'data-management':
+    let tabToRender = state.activeTab;
+
+    if (role === "operator" && tabToRender === "overview") {
+      setActiveTab("data-management");
+      return <DataManagementTab />;
+    }
+
+    switch (tabToRender) {
+      case "overview":
+        return role === "admin" ? <OverviewTab data={filteredData} /> : null;
+      case "data-management":
         return <DataManagementTab />;
-      case 'explorer':
+      case "explorer":
         return <ExplorerTab data={filteredData} />;
-      case 'datasets':
+      case "datasets":
         return <DatasetsTab />;
-      case 'settings':
+      case "settings":
         return <SettingsTab />;
       default:
-        setActiveTab('overview');
-        return <OverviewTab data={filteredData} />;
+        const defaultTab = role === "admin" ? "overview" : "data-management";
+        setActiveTab(defaultTab);
+        return null;
     }
   };
 
-  // Early return for welcome screen
   if (state.datasets.length === 0 && !showFileUpload) {
     return <WelcomeScreen onFileUpload={() => setShowFileUpload(true)} />;
   }
 
-  // Early return for file upload modal
   if (showFileUpload) {
     const handleClose = () => setShowFileUpload(false);
     const handleContinue = () => {
       setShowFileUpload(false);
-      setActiveTab('overview');
+      setActiveTab(role === "admin" ? "overview" : "data-management");
     };
-    return <MultiFileUpload onClose={handleClose} onContinue={handleContinue} />;
+    return (
+      <MultiFileUpload onClose={handleClose} onContinue={handleContinue} />
+    );
   }
 
-  // Main dashboard render
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Sidebar
@@ -114,12 +134,19 @@ function DashboardContent() {
         onMobileToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
       />
 
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+      <div
+        className={`transition-all duration-300 ${
+          sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+        }`}
+      >
         <Header
           onMobileMenuToggle={() => setMobileSidebarOpen(true)}
           onUploadNewDataset={() => setShowFileUpload(true)}
         />
-        <main className="p-4 lg:p-6 transition-all duration-300" id="dashboard-content">
+        <main
+          className="p-4 lg:p-6 transition-all duration-300"
+          id="dashboard-content"
+        >
           <div className="max-w-7xl mx-auto">{renderTabContent()}</div>
         </main>
       </div>

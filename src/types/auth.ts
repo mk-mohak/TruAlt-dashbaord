@@ -3,12 +3,14 @@ export interface User {
   email: string;
   created_at: string;
   last_sign_in_at?: string;
+  role?: string;
 }
 
 export interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  role?: string;
 }
 
 export interface LoginCredentials {

@@ -18,13 +18,13 @@ export class ColorManager {
   ];
 
   private static readonly DATASET_TYPE_COLORS = {
-    'pos_fom': '#3b82f6',     // Blue for POS FOM
-    'pos_lfom': '#22c55e',    // Green for POS LFOM  
-    'lfom': '#f59e0b',        // Different green for LFOM
-    'fom': '#f97316',         // Orange for FOM
-    'mda_claim': '#8b5cf6',   // Purple for MDA Claim
-    'stock': '#14b8a6',       // Teal for Stock
-    'production': '#7ab839',  // Amber for Production
+    'pos_fom': '#3b82f6',     
+    'pos_lfom': '#22c55e',    
+    'lfom': '#f59e0b',        
+    'fom': '#f97316',         
+    'mda_claim': '#8b5cf6',   
+    'stock': '#14b8a6',       
+    'production': '#7ab839',
   };
 
   private static assignedColors = new Map<string, string>();

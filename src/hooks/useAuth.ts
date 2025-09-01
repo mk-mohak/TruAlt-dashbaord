@@ -5,60 +5,54 @@ import { User, AuthState, LoginCredentials, SignUpCredentials } from '../types/a
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
+    role: undefined,
     isLoading: true,
     error: null,
   });
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    const fetchUserProfile = async (user: User) => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          setAuthState(prev => ({ ...prev, error: error.message, isLoading: false }));
-          return;
-        }
+        const { data: profile, error } = await supabase
+          .from('Profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
 
-        setAuthState(prev => ({
-          ...prev,
-          user: session?.user ? {
-            id: session.user.id,
-            email: session.user.email || '',
-            created_at: session.user.created_at,
-            last_sign_in_at: session.user.last_sign_in_at,
-          } : null,
-          isLoading: false,
-        }));
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          return 'operator';
+        }
+        return profile?.role || 'operator';
       } catch (err) {
-        console.error('Unexpected error getting session:', err);
-        setAuthState(prev => ({ 
-          ...prev, 
-          error: 'Failed to initialize authentication', 
-          isLoading: false 
-        }));
+        console.error('Unexpected error fetching profile:', err);
+        return 'operator';
       }
     };
 
-    getInitialSession();
+    const handleSession = async (session: any) => {
+      if (session?.user) {
+        const user: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          created_at: session.user.created_at,
+          last_sign_in_at: session.user.last_sign_in_at,
+        };
+        const role = await fetchUserProfile(user);
+        setAuthState({ user, role, isLoading: false, error: null });
+      } else {
+        setAuthState({ user: null, role: undefined, isLoading: false, error: null });
+      }
+    };
 
-    // Listen for auth changes
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        
-        setAuthState(prev => ({
-          ...prev,
-          user: session?.user ? {
-            id: session.user.id,
-            email: session.user.email || '',
-            created_at: session.user.created_at,
-            last_sign_in_at: session.user.last_sign_in_at,
-          } : null,
-          error: null,
-          isLoading: false,
-        }));
+      (event, session) => {
+        console.log('Auth state changed:', event);
+        handleSession(session);
       }
     );
 
@@ -66,74 +60,24 @@ export function useAuth() {
       subscription.unsubscribe();
     };
   }, []);
-
-  const signIn = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
-      });
-
-      if (error) {
-        setAuthState(prev => ({ ...prev, error: error.message, isLoading: false }));
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
-      setAuthState(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-      return { success: false, error: errorMessage };
-    }
+  
+  const signIn = async (credentials: LoginCredentials) => {
+    return supabase.auth.signInWithPassword(credentials);
   };
-
-  const signUp = async (credentials: SignUpCredentials): Promise<{ success: boolean; error?: string }> => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-
+  
+  const signUp = async (credentials: SignUpCredentials) => {
     if (credentials.password !== credentials.confirmPassword) {
-      const error = 'Passwords do not match';
-      setAuthState(prev => ({ ...prev, error, isLoading: false }));
-      return { success: false, error };
+      return { data: null, error: { message: 'Passwords do not match' } as any };
     }
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: credentials.email,
-        password: credentials.password,
-      });
-
-      if (error) {
-        setAuthState(prev => ({ ...prev, error: error.message, isLoading: false }));
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Sign up failed';
-      setAuthState(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-      return { success: false, error: errorMessage };
-    }
+    return supabase.auth.signUp({
+      email: credentials.email,
+      password: credentials.password,
+    });
   };
 
-  const signOut = async (): Promise<void> => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
-    
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-        setAuthState(prev => ({ ...prev, error: error.message, isLoading: false }));
-      }
-    } catch (err) {
-      console.error('Unexpected sign out error:', err);
-      setAuthState(prev => ({ 
-        ...prev, 
-        error: 'Failed to sign out', 
-        isLoading: false 
-      }));
-    }
+  // This function is now simplified. It only handles the Supabase sign-out.
+  const signOut = async () => {
+    return supabase.auth.signOut();
   };
 
   return {
