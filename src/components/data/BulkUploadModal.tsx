@@ -108,6 +108,9 @@ export function BulkUploadModal({
         case "Stock":
           result = await DatabaseService.uploadStockData(validation.validData);
           break;
+        case "Revenue":
+          result = await DatabaseService.uploadRevenueData(validation.validData);
+          break;
         default:
           throw new Error(`Unsupported table: ${tableName}`);
       }

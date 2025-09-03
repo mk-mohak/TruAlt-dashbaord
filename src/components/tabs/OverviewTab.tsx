@@ -9,6 +9,7 @@ import { MDAClaimKPI } from "../charts/MDAClaimKPI";
 import { StockAnalysisChart } from "../charts/StockAnalysisChart";
 import { BuyerTypeAnalysisChart } from "../charts/BuyerTypeAnalysisChart";
 import { StockKPICards } from "../charts/StockKPICards";
+import { RevenueKPICards } from "../charts/RevenueKPICards";
 import { useApp } from "../../contexts/AppContext";
 import { DrillDownBreadcrumb } from "../DrillDownBreadcrumb";
 import { DataProcessor } from "../../utils/dataProcessing";
@@ -34,6 +35,14 @@ export function OverviewTab({ data }: OverviewTabProps) {
     (dataset) =>
       state.activeDatasetIds.includes(dataset.id) &&
       ColorManager.isStockDataset(dataset.name)
+  );
+
+  // Check if revenue data is available
+  const hasRevenueData = state.datasets.some(
+    (dataset) =>
+      state.activeDatasetIds.includes(dataset.id) &&
+      (dataset.name.toLowerCase().includes('revenue') || 
+       dataset.fileName.toLowerCase().includes('revenue'))
   );
 
   const hasFOMData = state.datasets.some(
@@ -69,6 +78,9 @@ export function OverviewTab({ data }: OverviewTabProps) {
       {/* Dataset-Specific KPI Cards */}
       <div className="grid grid-cols-1 gap-6">
         <DatasetSpecificKPIs />
+
+        {/* Revenue KPI Cards - Only show when revenue data is available */}
+        {hasRevenueData && <RevenueKPICards />}
 
         {/* Stock KPI Cards - Only show when stock data is available */}
         {hasStockData && <StockKPICards />}

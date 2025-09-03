@@ -16,7 +16,8 @@ export const TABLES = {
   MDA_CLAIM: 'MDA claim',
   POS_LFOM: 'POS LFOM',
   POS_FOM: 'POS FOM',
-  STOCK: 'Stock'
+  STOCK: 'Stock',
+  REVENUE: 'Revenue'
 } as const;
 
 export type TableName = typeof TABLES[keyof typeof TABLES];

@@ -89,13 +89,23 @@ export interface StockRecord {
   'Total Stock Left'?: number;
 }
 
+export interface RevenueRecord {
+  id: number;
+  Months?: string;
+  'Direct sales FOM'?: string;
+  'Direct Sales LFOM'?: string;
+  'MDA claim received'?: string;
+  'Total Revenue'?: string;
+}
+
 export type DatabaseRecord = 
   | FOMRecord 
   | LFOMRecord 
   | MDAClaimRecord 
   | POSLFOMRecord 
   | POSFOMRecord 
-  | StockRecord;
+  | StockRecord
+  | RevenueRecord;
 
 export interface DatabaseError {
   message: string;

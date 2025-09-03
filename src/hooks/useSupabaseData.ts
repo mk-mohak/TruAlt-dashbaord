@@ -65,6 +65,7 @@ export function useSupabaseData() {
       if (result.posLfom && result.posLfom.length > 0) newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_LFOM, result.posLfom));
       if (result.posFom && result.posFom.length > 0) newDatasets.push(convertDatabaseRecordsToDataset(TABLES.POS_FOM, result.posFom));
       if (result.stock && result.stock.length > 0) newDatasets.push(convertDatabaseRecordsToDataset(TABLES.STOCK, result.stock));
+      if (result.revenue && result.revenue.length > 0) newDatasets.push(convertDatabaseRecordsToDataset(TABLES.REVENUE, result.revenue));
       
       setDatasets(newDatasets);
 

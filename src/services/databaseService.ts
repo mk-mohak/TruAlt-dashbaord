@@ -6,6 +6,7 @@ import {
   POSLFOMRecord, 
   POSFOMRecord, 
   StockRecord,
+  RevenueRecord,
   DatabaseRecord,
   DatabaseResponse 
 } from '../types/database';
@@ -354,6 +355,10 @@ export class DatabaseService {
     return this.fetchAll<StockRecord>(TABLES.STOCK);
   }
 
+  static async fetchRevenueData(): Promise<DatabaseResponse<RevenueRecord>> {
+    return this.fetchAll<RevenueRecord>(TABLES.REVENUE);
+  }
+
   // Batch operations for data upload
   static async uploadFOMData(records: FlexibleDataRow[]): Promise<DatabaseResponse<FOMRecord>> {
     const convertedRecords = records.map(record => 
@@ -397,6 +402,13 @@ export class DatabaseService {
     return this.insertBatch<StockRecord>(TABLES.STOCK, convertedRecords);
   }
 
+  static async uploadRevenueData(records: FlexibleDataRow[]): Promise<DatabaseResponse<RevenueRecord>> {
+    const convertedRecords = records.map(record => 
+      this.convertToTableRecord(record, TABLES.REVENUE) as Partial<RevenueRecord>
+    );
+    return this.insertBatch<RevenueRecord>(TABLES.REVENUE, convertedRecords);
+  }
+
   // Get all data from all tables
   static async fetchAllData(): Promise<{
     fom: FOMRecord[];
@@ -405,6 +417,7 @@ export class DatabaseService {
     posLfom: POSLFOMRecord[];
     posFom: POSFOMRecord[];
     stock: StockRecord[];
+    revenue: RevenueRecord[];
     errors: string[];
   }> {
     const results = await Promise.allSettled([
@@ -413,7 +426,8 @@ export class DatabaseService {
       this.fetchMDAClaimData(),
       this.fetchPOSLFOMData(),
       this.fetchPOSFOMData(),
-      this.fetchStockData()
+      this.fetchStockData(),
+      this.fetchRevenueData()
     ]);
 
     const errors: string[] = [];
@@ -423,7 +437,8 @@ export class DatabaseService {
       mdaClaim: [] as MDAClaimRecord[],
       posLfom: [] as POSLFOMRecord[],
       posFom: [] as POSFOMRecord[],
-      stock: [] as StockRecord[]
+      stock: [] as StockRecord[],
+      revenue: [] as RevenueRecord[]
     };
 
     results.forEach((result, index) => {
@@ -435,6 +450,7 @@ export class DatabaseService {
           case 3: data.posLfom = result.value.data as POSLFOMRecord[]; break;
           case 4: data.posFom = result.value.data as POSFOMRecord[]; break;
           case 5: data.stock = result.value.data as StockRecord[]; break;
+          case 6: data.revenue = result.value.data as RevenueRecord[]; break;
         }
       } else if (result.status === 'fulfilled' && result.value.error) {
         errors.push(result.value.error.message);
