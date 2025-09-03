@@ -41,6 +41,9 @@ const createValidationSchema = (tableName: TableName) => {
       baseSchema.Year = yup.number().required('Year is required');
       baseSchema.Month = yup.string().required('Month is required');
       break;
+    case TABLES.REVENUE:
+      baseSchema.Months = yup.string().required('Month is required');
+      break;
   }
 
   return yup.object(baseSchema);
@@ -197,6 +200,17 @@ export function DataEntryForm({
           { name: 'Amount not Received', type: 'text', label: 'Amount not Received (₹)' },
           { name: 'Date of Receipt', type: 'text', label: 'Date of Receipt' },
           { name: '% Recovery', type: 'text', label: '% Recovery' },
+        ];
+      case TABLES.REVENUE:
+        return [
+          { name: 'Months', type: 'select', label: 'Month', required: true, options: [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+          ]},
+          { name: 'Direct sales FOM', type: 'text', label: 'Direct Sales FOM (₹)' },
+          { name: 'Direct Sales LFOM', type: 'text', label: 'Direct Sales LFOM (₹)' },
+          { name: 'MDA claim received', type: 'text', label: 'MDA Claim Received (₹)' },
+          { name: 'Total Revenue', type: 'text', label: 'Total Revenue (₹)' },
         ];
       default:
         return [];

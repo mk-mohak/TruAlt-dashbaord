@@ -349,7 +349,8 @@ export function DataTable({
                 onDelete,
                 selectedRecords,
                 onSelectionChange,
-                showActions
+                showActions,
+                idColumn
               }}
               width="100%"
               style={{ minWidth: columns.reduce((sum, col) => sum + col.width, 0) + (showActions ? 120 : 0) }}

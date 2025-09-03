@@ -25,6 +25,7 @@ export class ColorManager {
     'mda_claim': '#8b5cf6',   
     'stock': '#14b8a6',       
     'production': '#7ab839',
+    'revenue': '#ec4899',
   };
 
   private static assignedColors = new Map<string, string>();
@@ -74,6 +75,9 @@ export class ColorManager {
     if (lowerName.includes('stock')) {
       return 'stock';
     }
+    if (lowerName.includes('revenue')) {
+      return 'revenue';
+    }
     if (lowerName.includes('production')) {
       return 'production';
     }
@@ -105,6 +109,9 @@ export class ColorManager {
     if (lowerName.includes('stock')) {
       return 'Stock';
     }
+    if (lowerName.includes('revenue')) {
+      return 'Revenue';
+    }
     if (lowerName.includes('production')) {
       return 'Production';
     }
@@ -123,6 +130,11 @@ export class ColorManager {
   static isStockDataset(datasetName: string): boolean {
     const lowerName = datasetName.toLowerCase();
     return lowerName.includes('stock') || lowerName.includes('inventory');
+  }
+
+  static isRevenueDataset(datasetName: string): boolean {
+    const lowerName = datasetName.toLowerCase();
+    return lowerName.includes('revenue');
   }
 
   static resetColorAssignments(): void {

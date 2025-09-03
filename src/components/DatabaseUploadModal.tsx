@@ -111,6 +111,8 @@ export function DatabaseUploadModal({
         return 'Point of Sale FOM - Transaction-level sales data';
       case TABLES.STOCK:
         return 'Stock Management - Production, sales, and inventory data';
+      case TABLES.REVENUE:
+        return 'Revenue data - Monthly revenue breakdown by source';
       default:
         return 'Database table for storing structured data';
     }
