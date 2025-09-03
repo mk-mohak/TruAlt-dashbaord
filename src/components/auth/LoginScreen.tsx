@@ -39,7 +39,7 @@ export function LoginScreen() {
       ? await signUp(data as SignUpCredentials)
       : await signIn(data as LoginCredentials);
 
-    if (result.success) {
+    if (!result.error) {
       reset();
     }
   };
@@ -147,9 +147,9 @@ export function LoginScreen() {
                     )}
                   </button>
                 </div>
-                {errors.confirmPassword && (
+                {(errors as any).confirmPassword && (
                   <p className="mt-1 text-sm text-error-600 dark:text-error-400">
-                    {errors.confirmPassword.message}
+                    {(errors as any).confirmPassword.message}
                   </p>
                 )}
               </div>

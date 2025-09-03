@@ -209,14 +209,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SYNC_FROM_DATABASE": {
       const databaseDatasets = action.payload;
-      const activeIds =
-        databaseDatasets.length > 0 ? [databaseDatasets[0].id] : [];
-      const combinedData = combineActiveDatasets(databaseDatasets, activeIds);
+      const newActiveIds = state.activeDatasetIds.filter((id) =>
+        databaseDatasets.some((d) => d.id === id)
+      );
+
+      // If no active datasets remain, default to the first one
+      if (newActiveIds.length === 0 && databaseDatasets.length > 0) {
+        newActiveIds.push(databaseDatasets[0].id);
+      }
+      const combinedData = combineActiveDatasets(
+        databaseDatasets,
+        newActiveIds
+      );
 
       return {
         ...state,
         datasets: databaseDatasets,
-        activeDatasetIds: activeIds,
+        activeDatasetIds: newActiveIds,
         data: combinedData,
         filteredData: combinedData,
         isConnectedToDatabase: true,
@@ -303,31 +312,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const savedSettings = localStorage.getItem("dashboard-settings");
       if (savedSettings) {
         dispatch({ type: "SET_SETTINGS", payload: JSON.parse(savedSettings) });
-      }
-
-      const savedDatasetsString = sessionStorage.getItem("dashboard-datasets");
-      const savedDataString = sessionStorage.getItem("dashboard-data");
-      const savedActiveDatasetIdsString = sessionStorage.getItem(
-        "dashboard-active-ids"
-      );
-
-      if (
-        savedDatasetsString &&
-        savedDataString &&
-        savedActiveDatasetIdsString
-      ) {
-        const savedDatasets = JSON.parse(savedDatasetsString);
-        const savedData = JSON.parse(savedDataString);
-        const savedActiveDatasetIds = JSON.parse(savedActiveDatasetIdsString);
-
-        if (savedDatasets.length > 0) {
-          dispatch({ type: "SET_DATASETS", payload: savedDatasets });
-          dispatch({ type: "SET_DATA", payload: savedData });
-          dispatch({
-            type: "SET_ACTIVE_DATASETS",
-            payload: savedActiveDatasetIds,
-          });
-        }
       }
     } catch (error) {
       console.error("Error loading saved state:", error);
@@ -449,23 +433,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.data, state.filters, dispatch]);
 
   // Save state to sessionStorage whenever it changes
-  useEffect(() => {
-    if (state.datasets.length > 0) {
-      try {
-        sessionStorage.setItem(
-          "dashboard-datasets",
-          JSON.stringify(state.datasets)
-        );
-        sessionStorage.setItem("dashboard-data", JSON.stringify(state.data));
-        sessionStorage.setItem(
-          "dashboard-active-ids",
-          JSON.stringify(state.activeDatasetIds)
-        );
-      } catch (error) {
-        console.error("Error saving state to sessionStorage:", error);
-      }
-    }
-  }, [state.datasets, state.data, state.activeDatasetIds]);
+  // useEffect(() => {
+  //   if (state.datasets.length > 0) {
+  //     try {
+  //       sessionStorage.setItem(
+  //         "dashboard-datasets",
+  //         JSON.stringify(state.datasets)
+  //       );
+  //       sessionStorage.setItem("dashboard-data", JSON.stringify(state.data));
+  //       sessionStorage.setItem(
+  //         "dashboard-active-ids",
+  //         JSON.stringify(state.activeDatasetIds)
+  //       );
+  //     } catch (error) {
+  //       console.error("Error saving state to sessionStorage:", error);
+  //     }
+  //   }
+  // }, [state.datasets, state.data, state.activeDatasetIds]);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -479,7 +463,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.settings]);
 
-  // ... (rest of the helper functions are unchanged)
   const setActiveTab = (tab: TabType) => {
     dispatch({ type: "SET_ACTIVE_TAB", payload: tab });
   };

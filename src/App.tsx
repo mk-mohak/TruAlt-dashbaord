@@ -13,7 +13,6 @@ import { DataManagementTab } from "./components/data/DataManagementTab";
 import { ExplorerTab } from "./components/tabs/ExplorerTab";
 import { DatasetsTab } from "./components/tabs/DatasetsTab";
 import { SettingsTab } from "./components/tabs/SettingsTab";
-import { WelcomeScreen } from "./components/WelcomeScreen";
 
 function DashboardContent() {
   const { state, setActiveTab } = useApp();
@@ -58,7 +57,6 @@ function DashboardContent() {
     };
   }, []);
 
-  // --- MODIFICATION: Wait for both user AND role to be loaded ---
   if (authLoading || (user && !role)) {
     return (
       <LoadingSpinner message="Initializing..." className="min-h-screen" />
@@ -80,9 +78,6 @@ function DashboardContent() {
   }
 
   const renderTabContent = () => {
-    if (state.datasets.length === 0 && !showFileUpload) {
-      return <WelcomeScreen onFileUpload={() => setShowFileUpload(true)} />;
-    }
 
     const filteredData = state.filteredData;
     let tabToRender = state.activeTab;
@@ -109,10 +104,6 @@ function DashboardContent() {
         return null;
     }
   };
-
-  if (state.datasets.length === 0 && !showFileUpload) {
-    return <WelcomeScreen onFileUpload={() => setShowFileUpload(true)} />;
-  }
 
   if (showFileUpload) {
     const handleClose = () => setShowFileUpload(false);

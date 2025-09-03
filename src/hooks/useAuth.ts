@@ -62,17 +62,29 @@ export function useAuth() {
   }, []);
   
   const signIn = async (credentials: LoginCredentials) => {
-    return supabase.auth.signInWithPassword(credentials);
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    const { error } = await supabase.auth.signInWithPassword(credentials);
+    if (error) {
+      setAuthState(prev => ({ ...prev, isLoading: false, error: error.message }));
+    }
+    return { error };
   };
   
   const signUp = async (credentials: SignUpCredentials) => {
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     if (credentials.password !== credentials.confirmPassword) {
-      return { data: null, error: { message: 'Passwords do not match' } as any };
+      const error = { message: 'Passwords do not match' };
+      setAuthState(prev => ({ ...prev, isLoading: false, error: error.message }));
+      return { error };
     }
-    return supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: credentials.email,
       password: credentials.password,
     });
+    if (error) {
+      setAuthState(prev => ({ ...prev, isLoading: false, error: error.message }));
+    }
+    return { error }; // Return error to the component
   };
 
   // This function is now simplified. It only handles the Supabase sign-out.
