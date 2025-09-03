@@ -32,6 +32,7 @@ interface RowProps {
     filteredData: FlexibleDataRow[];
     columns: ColumnConfig[];
     currency: string;
+    idColumnKey: string;
     onEdit?: (record: FlexibleDataRow) => void;
     onDelete?: (record: FlexibleDataRow) => void;
     selectedRecords?: string[];
@@ -42,7 +43,7 @@ interface RowProps {
 
 function Row({ index, style, data }: RowProps) {
   const row = data.filteredData[index];
-  const recordId = String(row.id || row['S.No.'] || index);
+  const recordId = String(row[data.idColumnKey] || index);
   const isSelected = data.selectedRecords?.includes(recordId) || false;
   
   const handleSelectionChange = (checked: boolean) => {
@@ -131,7 +132,6 @@ export function DataTable({
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
 
-  // Generate column configuration dynamically
   const columns: ColumnConfig[] = useMemo(() => {
     if (data.length === 0) return [];
     
@@ -150,10 +150,17 @@ export function DataTable({
     }));
   }, [data]);
 
+  const idColumnKey = useMemo(() => {
+    if (data.length > 0 && 'id' in data[0]) {
+      return 'id';
+    }
+    return columns.length > 0 ? columns[0].key : '';
+  }, [data, columns]);
+
+
   const filteredAndSortedData = useMemo(() => {
     let filtered = data;
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(row =>
         Object.values(row).some(value =>
@@ -162,7 +169,6 @@ export function DataTable({
       );
     }
 
-    // Apply column filters
     Object.entries(columnFilters).forEach(([key, value]) => {
       if (value) {
         filtered = filtered.filter(row =>
@@ -171,7 +177,6 @@ export function DataTable({
       }
     });
 
-    // Apply sorting
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key!];
@@ -260,7 +265,6 @@ export function DataTable({
         </div>
       </div>
 
-      {/* Column Filters */}
       {showFilters && (
         <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg overflow-x-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -283,7 +287,6 @@ export function DataTable({
       )}
 
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        {/* Header */}
         <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 overflow-x-auto">
           <div className="flex overflow-x-auto">
             {showActions && (
@@ -297,7 +300,7 @@ export function DataTable({
                   onChange={(e) => {
                     if (!onSelectionChange) return;
                     if (e.target.checked) {
-                      const allIds = filteredAndSortedData.map((row, idx) => String(row.id || row['S.No.'] || idx));
+                      const allIds = filteredAndSortedData.map((row, idx) => String(row[idColumnKey] || idx));
                       onSelectionChange(allIds);
                     } else {
                       onSelectionChange([]);
@@ -330,7 +333,6 @@ export function DataTable({
           </div>
         </div>
 
-        {/* Data Rows */}
         {filteredAndSortedData.length === 0 ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             No data matches your current filters
@@ -345,12 +347,12 @@ export function DataTable({
                 filteredData: filteredAndSortedData,
                 columns,
                 currency: state.settings.currency,
+                idColumnKey,
                 onEdit,
                 onDelete,
                 selectedRecords,
                 onSelectionChange,
-                showActions,
-                idColumn
+                showActions
               }}
               width="100%"
               style={{ minWidth: columns.reduce((sum, col) => sum + col.width, 0) + (showActions ? 120 : 0) }}
