@@ -1,313 +1,277 @@
-import React, { useState, useMemo } from 'react';
-import Chart from 'react-apexcharts';
-import { ApexOptions } from 'apexcharts';
-import { FlexibleDataRow } from '../../types';
-import { ChartContainer } from './ChartContainer';
-import { useApp } from '../../contexts/AppContext';
-import { ColorManager } from '../../utils/colorManager';
+import React, { useState, useMemo } from "react";
+import Chart from "react-apexcharts";
+import { ApexOptions } from "apexcharts";
+import { FlexibleDataRow } from "../../types";
+import { ChartContainer } from "./ChartContainer";
+import { useApp } from "../../contexts/AppContext";
 
 interface StockAnalysisChartProps {
   className?: string;
 }
 
-export function StockAnalysisChart({ className = '' }: StockAnalysisChartProps) {
+// A robust helper function to parse 'dd-mm-yyyy' dates
+const parseDate = (dateString: string): Date | null => {
+  if (!dateString || typeof dateString !== "string") return null;
+
+  const parts = dateString.split(/[-/]/); // Handles both '-' and '/' separators
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    let year = parseInt(parts[2], 10);
+
+    if (year < 100) {
+      year += 2000;
+    }
+
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      const date = new Date(year, month, day);
+      if (
+        date.getFullYear() === year &&
+        date.getMonth() === month &&
+        date.getDate() === day
+      ) {
+        return date;
+      }
+    }
+  }
+  return null;
+};
+
+export function StockAnalysisChart({
+  className = "",
+}: StockAnalysisChartProps) {
   const { state } = useApp();
-  const [chartType, setChartType] = useState<'bar' | 'line' | 'horizontalBar'>('bar');
-  const isDarkMode = state.settings.theme === 'dark';
+  const [chartType, setChartType] = useState<"area" | "bar">("area"); // Removed horizontalBar
+  const isDarkMode = state.settings.theme === "dark";
 
-  const processStockData = useMemo(() => {
-    const stockDatasets = state.datasets.filter(dataset =>
-      state.activeDatasetIds.includes(dataset.id) &&
-      ColorManager.isStockDataset(dataset.name)
-    );
+  const processedData = useMemo(() => {
+    const activeData = state.datasets
+      .filter((d) => state.activeDatasetIds.includes(d.id))
+      .flatMap((d) => d.data);
 
-    if (stockDatasets.length === 0) {
+    if (activeData.length === 0) {
       return { rcfData: null, boomiData: null, hasData: false };
     }
 
-    const allStockData = stockDatasets.flatMap(ds => ds.data);
-    if (allStockData.length === 0) {
-      return { rcfData: null, boomiData: null, hasData: false };
-    }
-
-    const columns = Object.keys(allStockData[0]);
-    const dateCol = columns.find(c => c.toLowerCase().trim() === 'date');
-
-    const findCol = (prefix: string, field: string) =>
-      columns.find(c => c.toLowerCase().includes(prefix) && c.toLowerCase().includes(field));
-
-    const rcfProdCol = findCol('rcf', 'production');
-    const rcfSalesCol = findCol('rcf', 'sales');
-    const rcfStockCol = findCol('rcf', 'stock');
-    const boomiProdCol = findCol('boomi', 'production');
-    const boomiSalesCol = findCol('boomi', 'sales');
-    const boomiStockCol = findCol('boomi', 'stock');
-
-    if (!dateCol) {
-      return { rcfData: null, boomiData: null, hasData: false };
-    }
-
-    const parseNum = (val: any) => {
-      if (val === null || val === '-' || String(val).trim() === '') return 0;
-      const n = parseFloat(String(val).replace(/[",\s]/g, ''));
-      return isNaN(n) ? 0 : n;
-    };
-
-    const map = new Map<string, {
-      rcfProduction: number;
-      rcfSales: number;
-      rcfStock: number;
-      boomiProduction: number;
-      boomiSales: number;
-      boomiStock: number;
-    }>();
-
-    allStockData.forEach(row => {
-      const d = String(row[dateCol]).trim();
-      if (!d) return;
-
-      map.set(d, {
-        rcfProduction: parseNum(row[rcfProdCol!] || 0),
-        rcfSales:      parseNum(row[rcfSalesCol!] || 0),
-        rcfStock:      parseNum(row[rcfStockCol!] || 0),
-        boomiProduction: parseNum(row[boomiProdCol!] || 0),
-        boomiSales:      parseNum(row[boomiSalesCol!] || 0),
-        boomiStock:      parseNum(row[boomiStockCol!] || 0),
-      });
-    });
-
-    const sortedDates = Array.from(map.keys()).sort((a, b) =>
-      new Date(a).getTime() - new Date(b).getTime()
-    );
-
-    const aggregate = (dates: string[]) => {
-      if (dates.length <= 15) {
-        return { dates, map };
-      }
-
-      const aggregatedDates: string[] = [];
-      const aggregatedMap = new Map<string, any>();
-
-      if (dates.length > 50) {
-        const monthMap = new Map<string, any>();
-        dates.forEach(d => {
-          const m = new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-          const data = map.get(d)!;
-          const mm = monthMap.get(m) || { ...data, count: 0 };
-          mm.rcfProduction += data.rcfProduction;
-          mm.rcfSales      += data.rcfSales;
-          mm.rcfStock      += data.rcfStock;
-          mm.boomiProduction += data.boomiProduction;
-          mm.boomiSales      += data.boomiSales;
-          mm.boomiStock      += data.boomiStock;
-          mm.count++;
-          monthMap.set(m, mm);
-        });
-
-        Array.from(monthMap.keys()).sort().forEach(m => {
-          const d = monthMap.get(m);
-          aggregatedDates.push(m);
-          aggregatedMap.set(m, {
-            rcfProduction: Math.round(d.rcfProduction / d.count),
-            rcfSales:      Math.round(d.rcfSales / d.count),
-            rcfStock:      Math.round(d.rcfStock / d.count),
-            boomiProduction: Math.round(d.boomiProduction / d.count),
-            boomiSales:      Math.round(d.boomiSales / d.count),
-            boomiStock:      Math.round(d.boomiStock / d.count),
-          });
-        });
-      } else {
-        const step = Math.ceil(dates.length / 12);
-        for (let i = 0; i < dates.length; i += step) {
-          const d = dates[i];
-          aggregatedDates.push(d);
-          aggregatedMap.set(d, map.get(d));
-        }
-      }
-
-      return { dates: aggregatedDates, map: aggregatedMap };
-    };
-
-    const useAgg = chartType === 'horizontalBar';
-    const { dates: finalDates, map: finalMap } = useAgg
-      ? aggregate(sortedDates)
-      : { dates: sortedDates, map };
-
-    const makeData = () => ({
-      categories: finalDates,
-      series: [
-        { name: 'Production/RCF',        data: finalDates.map(d => finalMap.get(d).rcfProduction), color: '#3b82f6' },
-        { name: 'Sales/RCF',             data: finalDates.map(d => finalMap.get(d).rcfSales),      color: '#ef4444' },
-        { name: 'Unsold/RCF',            data: finalDates.map(d => finalMap.get(d).rcfStock),      color: '#f59e0b' },
-      ]
-    });
-
-    return {
-      rcfData: makeData(),
-      boomiData: {
-        categories: finalDates,
-        series: [
-          { name: 'Production/Boomi', data: finalDates.map(d => finalMap.get(d).boomiProduction), color: '#3b82f6' },
-          { name: 'Sales/Boomi',      data: finalDates.map(d => finalMap.get(d).boomiSales),      color: '#ef4444' },
-          { name: 'Unsold/Boomi',     data: finalDates.map(d => finalMap.get(d).boomiStock),      color: '#f59e0b' },
-        ]
-      },
-      hasData: finalDates.length > 0
-    };
-  }, [state.datasets, state.activeDatasetIds, chartType]);
-
-  if (!processStockData.hasData) return null;
-
-  const createChartOptions = (title: string): ApexOptions => {
-    const isHorizontal = chartType === 'horizontalBar';
-    const actualType = isHorizontal ? 'bar' : chartType;
-    const count = processStockData.rcfData!.categories.length;
-    const dynamicHeight = isHorizontal ? Math.max(400, count * 40 + 200) : 500;
-    
-    // Create responsive options based on chart type
-    const createResponsiveOptions = () => {
-      const baseResponsive = {
-        chart: { height: isHorizontal ? Math.max(300, count * 20 + 150) : 400 },
-        xaxis: { labels: { rotate: isHorizontal ? 0 : -90, style: { fontSize: '10px' } } },
-        yaxis: { labels: { style: { fontSize: '10px' } } }
+    const monthlyData: {
+      [month: string]: {
+        rcfProduction: number[];
+        rcfSales: number[];
+        rcfStock: number[];
+        boomiProduction: number[];
+        boomiSales: number[];
+        boomiStock: number[];
       };
+    } = {};
 
-      if (actualType === 'bar') {
-        return {
-          ...baseResponsive,
-          plotOptions: {
-            bar: {
-              columnWidth: isHorizontal ? '80%' : '85%',
-              barHeight: isHorizontal ? '80%' : undefined
-            }
+    activeData.forEach((row) => {
+      try {
+        const date = parseDate(row["Date"] as string);
+        if (!date) return;
+
+        const monthKey = date.toLocaleString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            rcfProduction: [],
+            rcfSales: [],
+            rcfStock: [],
+            boomiProduction: [],
+            boomiSales: [],
+            boomiStock: [],
+          };
+        }
+
+        const parseAndPush = (arr: number[], value: any) => {
+          if (
+            value !== null &&
+            value !== undefined &&
+            String(value).trim() !== ""
+          ) {
+            const num = parseFloat(String(value).replace(/,/g, ""));
+            if (!isNaN(num)) arr.push(num);
           }
         };
-      }
 
-      return baseResponsive;
+        parseAndPush(
+          monthlyData[monthKey].rcfProduction,
+          row["RCF Production"]
+        );
+        parseAndPush(monthlyData[monthKey].rcfSales, row["RCF Sales"]);
+        parseAndPush(monthlyData[monthKey].rcfStock, row["RCF Stock Left"]);
+        parseAndPush(
+          monthlyData[monthKey].boomiProduction,
+          row["Boomi Samrudhi Production"]
+        );
+        parseAndPush(
+          monthlyData[monthKey].boomiSales,
+          row["Boomi Samrudhi Sales"]
+        );
+        parseAndPush(
+          monthlyData[monthKey].boomiStock,
+          row["Boomi Samrudhi Stock Left"]
+        );
+      } catch (e) {
+        console.error("Error processing row:", row, e);
+      }
+    });
+
+    const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+      return new Date(a).getTime() - new Date(b).getTime();
+    });
+
+    if (sortedMonths.length === 0) {
+      return { rcfData: null, boomiData: null, hasData: false };
+    }
+
+    const avg = (arr: number[]) =>
+      arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    const createSeries = (product: "rcf" | "boomi") => {
+      const p = product === "rcf" ? "rcf" : "boomi";
+      return [
+        {
+          name: "Production",
+          data: sortedMonths.map((m) =>
+            Math.round(
+              avg(
+                monthlyData[m][
+                  `${p}Production` as keyof (typeof monthlyData)[string]
+                ]
+              )
+            )
+          ),
+          color: "#3b82f6",
+        },
+        {
+          name: "Sales",
+          data: sortedMonths.map((m) =>
+            Math.round(
+              avg(
+                monthlyData[m][
+                  `${p}Sales` as keyof (typeof monthlyData)[string]
+                ]
+              )
+            )
+          ),
+          color: "#ef4444",
+        },
+        {
+          name: "Unsold Stock",
+          data: sortedMonths.map((m) =>
+            Math.round(
+              avg(
+                monthlyData[m][
+                  `${p}Stock` as keyof (typeof monthlyData)[string]
+                ]
+              )
+            )
+          ),
+          color: "#ffc658",
+        },
+      ];
     };
 
-    const options: ApexOptions = {
+    const rcfData = { categories: sortedMonths, series: createSeries("rcf") };
+    const boomiData = {
+      categories: sortedMonths,
+      series: createSeries("boomi"),
+    };
+
+    return { rcfData, boomiData, hasData: true };
+  }, [state.datasets, state.activeDatasetIds]);
+
+  if (!processedData.hasData) return null;
+
+  const createChartOptions = (categories: string[]): ApexOptions => {
+    return {
       chart: {
-        type: actualType,
-        background: 'transparent',
+        type: chartType,
+        background: "transparent",
         toolbar: { show: false },
-        height: dynamicHeight,
-        animations: { enabled: true, easing: 'easeinout', speed: 800 }
+        height: 400,
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: "85%",
+          borderRadius: 4,
+          dataLabels: { position: "top" },
+        },
       },
       dataLabels: { enabled: false },
+      stroke: { curve: "smooth", width: chartType === "area" ? 2 : 0 },
       xaxis: {
-        categories: processStockData.rcfData!.categories,
-        labels: {
-          style: { colors: isDarkMode ? '#9ca3af' : '#6b7280', fontSize: '12px' },
-          rotate: isHorizontal ? 0 : -45
+        categories: categories,
+        labels: { style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" } },
+        title: {
+          text: "Month",
+          style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
         },
-        title: { text: isHorizontal ? 'Value (mt)' : 'Date', style: { color: isDarkMode ? '#9ca3af' : '#6b7280' } }
       },
       yaxis: {
         labels: {
-          style: { colors: isDarkMode ? '#9ca3af' : '#6b7280', fontSize: '11px' },
-          formatter: val => {
-            if (isHorizontal) {
-              const d = String(val);
-              return d.length > 7 && d.includes('-')
-                ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : d;
-            }
-            const n = typeof val === 'string' ? parseFloat(val) : val;
-            return n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(1)}K` : `${n}`;
-          }
+          style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
+          formatter: (val) => val.toFixed(0),
         },
-        title: { text: isHorizontal ? 'Date' : 'Value (mt)', style: { color: isDarkMode ? '#9ca3af' : '#6b7280' } }
+        title: {
+          text: "Average Value",
+          style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
+        },
       },
-      colors: processStockData.rcfData!.series.map(s => s.color),
-      theme: { mode: isDarkMode ? 'dark' : 'light' },
-      grid: { borderColor: isDarkMode ? '#374151' : '#e5e7eb', padding: { top: 10, right: 15, bottom: 10, left: 15 } },
       tooltip: {
-        theme: isDarkMode ? 'dark' : 'light',
-        shared: true,
-        intersect: false,
-        y: { formatter: v => v >= 1e6 ? `${(v/1e6).toFixed(2)}M mt` : v >= 1e3 ? `${(v/1e3).toFixed(2)}K mt` : `${v} mt` }
+        theme: isDarkMode ? "dark" : "light",
+        y: { formatter: (val) => `${val.toFixed(2)}` },
       },
       legend: {
-        show: true,
-        position: 'bottom',
-        horizontalAlign: 'center',
-        labels: { colors: isDarkMode ? '#9ca3af' : '#6b7280' },
-        markers: { width: 12, height: 12, radius: 6 },
-        itemMargin: { horizontal: 10, vertical: 5 }
+        position: "bottom",
+        horizontalAlign: "center",
+        labels: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
       },
-      responsive: [{
-        breakpoint: 768,
-        options: createResponsiveOptions()
-      }]
+      grid: { borderColor: isDarkMode ? "#374151" : "#e5e7eb" },
+      fill: { opacity: chartType === "area" ? 0.3 : 1, type: "solid" },
     };
+  };
 
-    // Add chart-type specific options
-    if (actualType === 'bar') {
-      options.plotOptions = {
-        bar: {
-          horizontal: isHorizontal,
-          borderRadius: 3,
-          columnWidth: isHorizontal ? '70%' : '75%',
-          barHeight: isHorizontal ? '75%' : undefined,
-          dataLabels: { position: isHorizontal ? 'bottom' : 'top' }
-        }
-      };
-    } else if (actualType === 'line') {
-      options.stroke = {
-        curve: 'smooth',
-        width: 2
-      };
-      options.markers = {
-        size: 4,
-        strokeWidth: 2,
-        hover: {
-          size: 6
-        }
-      };
-    }
-
-    return options;
+  const renderChart = (
+    data: { categories: string[]; series: any[] } | null,
+    title: string
+  ) => {
+    if (!data) return null;
+    const options = createChartOptions(data.categories);
+    return (
+      <ChartContainer
+        title={title}
+        availableTypes={["area", "bar"]}
+        currentType={chartType}
+        onChartTypeChange={(type) => setChartType(type as any)}
+      >
+        <Chart
+          options={options}
+          series={data.series}
+          type={chartType}
+          height={options.chart?.height}
+          width="100%"
+        />
+      </ChartContainer>
+    );
   };
 
   return (
     <div className={`space-y-8 ${className}`}>
-      {processStockData.rcfData && (
-        <ChartContainer
-          title="RCF: Production, Sales, and Unsold Stock Over Time"
-          availableTypes={['bar', 'line', 'horizontalBar']}
-          currentType={chartType}
-          onChartTypeChange={type => setChartType(type as any)}
-        >
-          <Chart
-            options={createChartOptions('RCF')}
-            series={processStockData.rcfData.series}
-            type={chartType === 'horizontalBar' ? 'bar' : chartType}
-            height={createChartOptions('RCF').chart!.height!}
-            width="100%"
-          />
-        </ChartContainer>
+      {renderChart(
+        processedData.rcfData,
+        "RCF: Production, Sales, and Unsold Stock Over Time"
       )}
-      {processStockData.boomiData && (
-        <ChartContainer
-          title="Boomi Samrudhi: Production, Sales, and Unsold Stock Over Time"
-          availableTypes={['bar', 'line', 'horizontalBar']}
-          currentType={chartType}
-          onChartTypeChange={type => setChartType(type as any)}
-        >
-          <Chart
-            options={createChartOptions('Boomi Samrudhi')}
-            series={processStockData.boomiData.series}
-            type={chartType === 'horizontalBar' ? 'bar' : chartType}
-            height={createChartOptions('Boomi Samrudhi').chart!.height!}
-            width="100%"
-          />
-        </ChartContainer>
+      {renderChart(
+        processedData.boomiData,
+        "Boomi Samrudhi: Production, Sales, and Unsold Stock Over Time"
       )}
     </div>
   );
 }
 
 export default StockAnalysisChart;
-

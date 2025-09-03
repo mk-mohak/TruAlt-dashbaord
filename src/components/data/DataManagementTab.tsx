@@ -4,9 +4,7 @@ import {
   Edit,
   Trash2,
   Upload,
-  Download,
   Search,
-  Filter,
   RefreshCw,
   Database,
   FileText,
@@ -19,6 +17,7 @@ import { DatabaseService } from "../../services/databaseService";
 import { DataEntryForm } from "./DataEntryForm";
 import { BulkUploadModal } from "./BulkUploadModal";
 import { DataTable } from "../DataTable";
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 export function DataManagementTab() {
   const [selectedTable, setSelectedTable] = useState<TableName>(TABLES.FOM);
@@ -33,6 +32,9 @@ export function DataManagementTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
 
+  // All tables now use 'id' as the primary key
+  const idColumn = "id";
+
   // Load data for selected table
   const loadTableData = async (tableName: TableName) => {
     setIsLoading(true);
@@ -40,7 +42,6 @@ export function DataManagementTab() {
 
     try {
       const result = await DatabaseService.fetchAll(tableName);
-
       if (result.error) {
         setError(result.error.message);
         setTableData([]);
@@ -55,9 +56,41 @@ export function DataManagementTab() {
     }
   };
 
-  // Load data when table selection changes
+  // Subscribe to real-time updates
   useEffect(() => {
     loadTableData(selectedTable);
+
+    const handleRealtimeUpdate = (
+      payload: RealtimePostgresChangesPayload<FlexibleDataRow>
+    ) => {
+      console.log("Real-time change received:", payload);
+      const { eventType, new: newRecord, old: oldRecord } = payload;
+
+      setTableData((currentData) => {
+        if (eventType === "INSERT") {
+          return [newRecord, ...currentData];
+        }
+        if (eventType === "UPDATE") {
+          return currentData.map((row) =>
+            row[idColumn] === newRecord[idColumn] ? newRecord : row
+          );
+        }
+        if (eventType === "DELETE") {
+          const recordId = (oldRecord as FlexibleDataRow)[idColumn];
+          return currentData.filter((row) => row[idColumn] !== recordId);
+        }
+        return currentData;
+      });
+    };
+
+    const subscription = DatabaseService.subscribeToTable(
+      selectedTable,
+      handleRealtimeUpdate
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [selectedTable]);
 
   const handleTableChange = (tableName: TableName) => {
@@ -77,35 +110,19 @@ export function DataManagementTab() {
   const handleDeleteRecord = async (record: FlexibleDataRow) => {
     if (!confirm("Are you sure you want to delete this record?")) return;
 
-    setIsLoading(true);
-    try {
-      const idColumn =
-        selectedTable === TABLES.FOM || selectedTable === TABLES.LFOM
-          ? "S.No."
-          : "id";
-      const recordId = record[idColumn];
-
-      const result = await DatabaseService.deleteRecord(
-        selectedTable,
-        recordId,
-        idColumn
-      );
-
-      if (result.error) {
-        setError(result.error.message);
-      } else {
-        await loadTableData(selectedTable);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete record");
-    } finally {
-      setIsLoading(false);
+    const recordId = record[idColumn];
+    const result = await DatabaseService.deleteRecord(
+      selectedTable,
+      recordId,
+      idColumn
+    );
+    if (result.error) {
+      setError(result.error.message);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedRecords.length === 0) return;
-
     if (
       !confirm(
         `Are you sure you want to delete ${selectedRecords.length} records?`
@@ -113,28 +130,20 @@ export function DataManagementTab() {
     )
       return;
 
-    setIsLoading(true);
-    try {
-      const idColumn =
-        selectedTable === TABLES.FOM || selectedTable === TABLES.LFOM
-          ? "S.No."
-          : "id";
-
-      for (const recordId of selectedRecords) {
-        await DatabaseService.deleteRecord(selectedTable, recordId, idColumn);
+    for (const recordId of selectedRecords) {
+      const result = await DatabaseService.deleteRecord(
+        selectedTable,
+        recordId,
+        idColumn
+      );
+      if (result.error) {
+        setError(
+          `Failed to delete record ${recordId}: ${result.error.message}`
+        );
+        break;
       }
-
-      setSelectedRecords([]);
-      await loadTableData(selectedTable);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete records");
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const handleSaveRecord = async (data: FlexibleDataRow) => {
-    await loadTableData(selectedTable);
+    setSelectedRecords([]);
   };
 
   const filteredData = tableData.filter((record) =>
@@ -157,7 +166,6 @@ export function DataManagementTab() {
             Manage your database records with full CRUD operations
           </p>
         </div>
-
         <div className="flex items-center space-x-3">
           <button
             onClick={() => loadTableData(selectedTable)}
@@ -169,7 +177,6 @@ export function DataManagementTab() {
             />
             <span>Refresh</span>
           </button>
-
           <button
             onClick={() => setShowBulkUpload(true)}
             className="btn-secondary flex items-center space-x-2"
@@ -177,7 +184,6 @@ export function DataManagementTab() {
             <Upload className="h-4 w-4" />
             <span>Bulk Upload</span>
           </button>
-
           <button
             onClick={handleAddRecord}
             className="btn-primary flex items-center space-x-2"
@@ -188,7 +194,7 @@ export function DataManagementTab() {
         </div>
       </div>
 
-      {/* Table Selection */}
+      {/* Table Selection & Search */}
       <div className="card">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
@@ -207,7 +213,6 @@ export function DataManagementTab() {
               ))}
             </select>
           </div>
-
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -219,7 +224,6 @@ export function DataManagementTab() {
                 className="input-field pl-10 w-64"
               />
             </div>
-
             {selectedRecords.length > 0 && (
               <button
                 onClick={handleBulkDelete}
@@ -233,7 +237,7 @@ export function DataManagementTab() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="flex items-center space-x-3">
@@ -245,12 +249,11 @@ export function DataManagementTab() {
                 Total Records
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {filteredData.length.toLocaleString()}
+                {tableData.length.toLocaleString()}
               </p>
             </div>
           </div>
         </div>
-
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-secondary-100 dark:bg-secondary-900/50 rounded-lg">
@@ -266,7 +269,6 @@ export function DataManagementTab() {
             </div>
           </div>
         </div>
-
         <div className="card">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-accent-100 dark:bg-accent-900/50 rounded-lg">
@@ -274,7 +276,7 @@ export function DataManagementTab() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Selected Records
+                Selected Rows
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {selectedRecords.length}
@@ -344,6 +346,7 @@ export function DataManagementTab() {
               selectedRecords={selectedRecords}
               onSelectionChange={setSelectedRecords}
               showActions={true}
+              idColumn={idColumn}
             />
           </div>
         )}
@@ -353,7 +356,7 @@ export function DataManagementTab() {
       {showAddForm && (
         <DataEntryForm
           tableName={selectedTable}
-          onSave={handleSaveRecord}
+          onSave={() => setShowAddForm(false)}
           onCancel={() => setShowAddForm(false)}
         />
       )}
@@ -362,7 +365,7 @@ export function DataManagementTab() {
         <DataEntryForm
           tableName={selectedTable}
           initialData={showEditForm}
-          onSave={handleSaveRecord}
+          onSave={() => setShowEditForm(null)}
           onCancel={() => setShowEditForm(null)}
           isEdit={true}
         />
@@ -374,7 +377,6 @@ export function DataManagementTab() {
           onClose={() => setShowBulkUpload(false)}
           onSuccess={() => {
             setShowBulkUpload(false);
-            loadTableData(selectedTable);
           }}
         />
       )}
