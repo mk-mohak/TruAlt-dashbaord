@@ -13,10 +13,10 @@ interface StockAnalysisChartProps {
 const parseDate = (dateString: string): Date | null => {
   if (!dateString || typeof dateString !== "string") return null;
 
-  const parts = dateString.split(/[-/]/); // Handles both '-' and '/' separators
+  const parts = dateString.split(/[-/]/);
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    const month = parseInt(parts[1], 10) - 1;
     let year = parseInt(parts[2], 10);
 
     if (year < 100) {
@@ -41,7 +41,7 @@ export function StockAnalysisChart({
   className = "",
 }: StockAnalysisChartProps) {
   const { state } = useApp();
-  const [chartType, setChartType] = useState<"area" | "bar">("area"); // Removed horizontalBar
+  const [chartType, setChartType] = useState<"area" | "bar">("area");
   const isDarkMode = state.settings.theme === "dark";
 
   const processedData = useMemo(() => {
@@ -186,55 +186,60 @@ export function StockAnalysisChart({
 
   if (!processedData.hasData) return null;
 
-  const createChartOptions = (categories: string[]): ApexOptions => {
-    return {
-      chart: {
-        type: chartType,
-        background: "transparent",
-        toolbar: { show: false },
-        height: 400,
+  const createChartOptions = (categories: string[]): ApexOptions => ({
+    chart: {
+      type: chartType,
+      background: "transparent",
+      toolbar: { show: false },
+      height: 420,
+      animations: {
+        enabled: true,
+        easing: "easeinout",
+        speed: 800,
+        animateGradually: { enabled: false },
+        dynamicAnimation: { enabled: true, speed: 900 },
       },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "85%",
-          borderRadius: 4,
-          dataLabels: { position: "top" },
-        },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: "50%",
+        borderRadius: 4,
+        dataLabels: { position: "top" },
       },
-      dataLabels: { enabled: false },
-      stroke: { curve: "smooth", width: chartType === "area" ? 2 : 0 },
-      xaxis: {
-        categories: categories,
-        labels: { style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" } },
-        title: {
-          text: "Month",
-          style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
-        },
+    },
+    fill: { opacity: chartType === "area" ? 0.3 : 1, type: "solid" },
+    stroke: { curve: "smooth", width: chartType === "area" ? 2 : 0 },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories,
+      labels: { style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" } },
+      title: {
+        text: "Month",
+        style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
       },
-      yaxis: {
-        labels: {
-          style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
-          formatter: (val) => val.toFixed(0),
-        },
-        title: {
-          text: "Average Value",
-          style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
-        },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
+        formatter: (val) => val.toFixed(0),
       },
-      tooltip: {
-        theme: isDarkMode ? "dark" : "light",
-        y: { formatter: (val) => `${val.toFixed(2)}` },
+      title: {
+        text: "Average Value",
+        style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
       },
-      legend: {
-        position: "bottom",
-        horizontalAlign: "center",
-        labels: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
-      },
-      grid: { borderColor: isDarkMode ? "#374151" : "#e5e7eb" },
-      fill: { opacity: chartType === "area" ? 0.3 : 1, type: "solid" },
-    };
-  };
+    },
+    tooltip: {
+      theme: isDarkMode ? "dark" : "light",
+      y: { formatter: (val) => `${val.toFixed(2)}` },
+    },
+    legend: {
+      position: "bottom",
+      horizontalAlign: "center",
+      labels: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
+    },
+    grid: { borderColor: isDarkMode ? "#374151" : "#e5e7eb" },
+  });
 
   const renderChart = (
     data: { categories: string[]; series: any[] } | null,
@@ -250,6 +255,7 @@ export function StockAnalysisChart({
         onChartTypeChange={(type) => setChartType(type as any)}
       >
         <Chart
+          key={chartType}
           options={options}
           series={data.series}
           type={chartType}
