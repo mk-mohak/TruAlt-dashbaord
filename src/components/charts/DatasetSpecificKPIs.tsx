@@ -85,7 +85,8 @@ export function DatasetSpecificKPIs({
           lowerName.includes("claim") ||
           lowerName.includes("recovery") ||
           lowerName.includes("stock") ||
-          lowerName.includes("inventory")
+          lowerName.includes("inventory") ||
+          lowerName.includes("revenue")
         );
       })
       .map((dataset) => {
@@ -152,7 +153,7 @@ export function DatasetSpecificKPIs({
 
   return (
     <div
-      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ${className}`}
+      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 ${className}`}
     >
       {filteredDatasetKPIs.map((dataset) => (
         <div
@@ -170,7 +171,7 @@ export function DatasetSpecificKPIs({
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-1">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className="w-2.5 h-2.5 rounded-full"
                   style={{
                     backgroundColor: DataProcessor.getDatasetColorByName(
                       dataset.name
@@ -182,7 +183,7 @@ export function DatasetSpecificKPIs({
                 </p>
               </div>
 
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+              <p className="text-[1.2rem] font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {dataset.hasQuantityData
                   ? `${dataset.totalQuantity.toLocaleString("en-US", {
                       minimumFractionDigits: 0,
@@ -208,13 +209,13 @@ export function DatasetSpecificKPIs({
             </div>
 
             <div
-              className="p-3 rounded-lg"
+              className="p-2 rounded-lg"
               style={{
                 backgroundColor: `${dataset.color}20`,
                 color: dataset.color,
               }}
             >
-              <BarChart3 className="h-6 w-6" />
+              <BarChart3 className="h-5 w-5" />
             </div>
           </div>
         </div>

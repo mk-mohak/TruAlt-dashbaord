@@ -171,12 +171,12 @@ export function StockKPICards({ className = '' }: StockKPICardsProps) {
   const boomiStatus = getPerformanceStatus(productionSalesKPIs.boomiProductionAvg, productionSalesKPIs.boomiSalesAvg);
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 ${className}`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${className}`}>
       {/* RCF Product KPI */}
       <div className="card hover:shadow-md transition-all duration-200">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
               RCF Product Performance
             </p>
             
@@ -195,7 +195,7 @@ export function StockKPICards({ className = '' }: StockKPICardsProps) {
                 </p>
               </div>
               
-              <div className="text-center">
+              <div className="text-center mb-1">
                 <div className="flex items-center justify-center mb-1">
                   <ShoppingCart className="h-4 w-4 text-green-600 dark:text-green-400 mr-1" />
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Sales</span>
@@ -239,12 +239,12 @@ export function StockKPICards({ className = '' }: StockKPICardsProps) {
       <div className="card hover:shadow-md transition-all duration-200">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
               Boomi Samrudhi Product Performance
             </p>
             
             {/* Production and Sales side by side */}
-            <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-1">
                   <Factory className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1" />
