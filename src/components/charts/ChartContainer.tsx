@@ -83,7 +83,7 @@ export function ChartContainer({
         )}
       </div>
       
-      <div className="h-auto min-h-[500px] w-full">
+      <div className="h-auto min-h-[420px] w-full">
         {children}
       </div>
     </div>

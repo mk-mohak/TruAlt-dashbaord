@@ -138,7 +138,7 @@ function DashboardContent() {
           className="p-4 lg:p-6 transition-all duration-300"
           id="dashboard-content"
         >
-          <div className="max-w-7xl mx-auto">{renderTabContent()}</div>
+          <div>{renderTabContent()}</div>
         </main>
       </div>
     </div>

@@ -21,6 +21,7 @@ interface OverviewTabProps {
 
 export function OverviewTab({ data }: OverviewTabProps) {
   const { state } = useApp();
+  const { filteredData } = state;
   const isDarkMode = state.settings.theme === "dark";
 
   // Check if MDA claim data is available
@@ -71,12 +72,11 @@ export function OverviewTab({ data }: OverviewTabProps) {
   const dateColumn = DataProcessor.findDateColumn(data);
 
   return (
-    <div className="space-y-8">
-      {/* Drill-down Breadcrumb */}
+    <div className="space-y-6">
       <DrillDownBreadcrumb />
 
       {/* Dataset-Specific KPI Cards */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-4">
         <DatasetSpecificKPIs />
 
         {/* Revenue KPI Cards - Only show when revenue data is available */}
