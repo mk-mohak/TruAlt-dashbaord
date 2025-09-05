@@ -7,6 +7,7 @@ import {
   Menu,
   X,
   Library,
+  LogOut,
 } from "lucide-react";
 import { TabType } from "../types";
 import { useApp } from "../contexts/AppContext";
@@ -55,7 +56,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { state, setActiveTab } = useApp();
   // The signOut function is no longer needed here
-  const { user, role } = useAuth();
+  const { user, role, signOut } = useAuth();
 
   const handleTabClick = (tabId: TabType) => {
     setActiveTab(tabId);
@@ -96,21 +97,24 @@ export function Sidebar({
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            {!isCollapsed && (
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                TruAlt Analytics
-              </h1>
-            )}
-            <button
-              onClick={onToggle}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hidden lg:block focus:outline-none focus:ring-2 focus:ring-primary-500"
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={onToggle}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hidden lg:block focus:outline-none"
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+
+              {!isCollapsed && (
+                <h1 className="text-xl font-bold text-[#1A2885] dark:text-gray-100">
+                  TruAlt Analytics
+                </h1>
+              )}
+            </div>
             <button
               onClick={onMobileToggle}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors lg:hidden focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors lg:hidden focus:outline-none"
               aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
@@ -177,6 +181,15 @@ export function Sidebar({
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 capitalize">
                     Role: {role}
                   </p>
+                  <button
+                    onClick={signOut}
+                    className="mt-3 flex items-center space-x-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 focus:outline-none rounded"
+                    aria-label="Sign Out"
+                    type="button"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               )}
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
