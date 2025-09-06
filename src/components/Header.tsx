@@ -282,7 +282,6 @@ export function Header({
               onOpenFilters={() => setShowGlobalFilters(true)}
             />
           )}
-
           {/* Export Menu */}
           {state.data.length > 0 && (
             <div className="relative" ref={exportMenuRef}>
