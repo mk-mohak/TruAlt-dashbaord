@@ -9,9 +9,12 @@ import {
   Dataset,
   FlexibleDataRow,
   FilterState,
+  GlobalFilterState,
   UserSettings,
   TabType,
 } from "../types";
+import { useGlobalFilters } from "../hooks/useGlobalFilters";
+import { GlobalFilterProcessor } from "../utils/globalFilterProcessor";
 import { ColorManager } from "../utils/colorManager";
 import { useSupabaseData } from "../hooks/useSupabaseData";
 import { useRealtimeSubscriptions } from "../hooks/useRealtimeSubscriptions";
@@ -25,6 +28,7 @@ interface AppState {
   data: FlexibleDataRow[];
   filteredData: FlexibleDataRow[];
   filters: FilterState;
+  globalFilters: GlobalFilterState;
   settings: UserSettings;
   activeTab: TabType;
   isLoading: boolean;
@@ -45,6 +49,7 @@ type AppAction =
   | { type: "SET_DATA"; payload: FlexibleDataRow[] }
   | { type: "SET_FILTERED_DATA"; payload: FlexibleDataRow[] }
   | { type: "SET_FILTERS"; payload: FilterState }
+  | { type: "SET_GLOBAL_FILTERS"; payload: GlobalFilterState }
   | { type: "SET_SETTINGS"; payload: UserSettings }
   | { type: "SET_ACTIVE_TAB"; payload: TabType }
   | { type: "SET_LOADING"; payload: boolean }
@@ -69,6 +74,11 @@ const initialState: AppState = {
     selectedPlants: [],
     selectedFactories: [],
     drillDownFilters: {},
+  },
+  globalFilters: {
+    dateRange: { fromDate: '', toDate: '' },
+    selectedMonths: [],
+    selectedBuyerTypes: []
   },
   settings: {
     theme: "light" as "light" | "dark" | "system",
@@ -189,6 +199,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_FILTERS":
       return { ...state, filters: action.payload };
 
+    case "SET_GLOBAL_FILTERS":
+      return { ...state, globalFilters: action.payload };
+
     case "SET_SETTINGS":
       return { ...state, settings: action.payload };
 
@@ -297,6 +310,15 @@ function RealtimeSubscriptionHandler({ children }: { children: ReactNode }) {
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const {
+    globalFilters,
+    setGlobalFilters: updateGlobalFilters,
+    clearGlobalFilters: resetGlobalFilters,
+    applyFiltersToData,
+    getFilteredDataCount,
+    hasActiveFilters,
+    validateFiltersForDataset
+  } = useGlobalFilters();
+  const {
     datasets: supabaseDatasets,
     isLoading: supabaseLoading,
     error: supabaseError,
@@ -322,12 +344,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     dispatch({ type: "SET_USER", payload: user });
     dispatch({ type: "SET_AUTHENTICATED", payload: !!user });
+    dispatch({ type: "SET_GLOBAL_FILTERS", payload: globalFilters });
 
     // If the user is logged out, reset the entire state
     if (!user) {
       dispatch({ type: "RESET_STATE" });
     }
   }, [user]);
+
+  // Update global filters in state when hook state changes
+  useEffect(() => {
+    dispatch({ type: "SET_GLOBAL_FILTERS", payload: globalFilters });
+  }, [globalFilters]);
 
   // Sync Supabase data with local state
   useEffect(() => {
@@ -343,9 +371,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Effect to apply filters whenever data or filters change
   useEffect(() => {
-    let currentFilteredData = state.data;
+    // First apply global filters
+    let currentFilteredData = applyFiltersToData(state.data);
 
-    // ... (rest of the filtering logic is unchanged)
+    // Then apply legacy filters for backward compatibility
     const { start, end } = state.filters.dateRange;
     if (start && end) {
       const dateColumn =
@@ -430,7 +459,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     dispatch({ type: "SET_FILTERED_DATA", payload: currentFilteredData });
-  }, [state.data, state.filters, dispatch]);
+  }, [state.data, state.filters, applyFiltersToData, dispatch]);
+
+  // Apply global filters when datasets change
+  useEffect(() => {
+    if (state.data.length > 0 && hasActiveFilters()) {
+      const validation = validateFiltersForDataset(state.data);
+      if (validation.warnings.length > 0) {
+        console.warn('Global filter validation warnings:', validation.warnings);
+      }
+    }
+  }, [state.activeDatasetIds, hasActiveFilters, validateFiltersForDataset, state.data]);
 
   // Save state to sessionStorage whenever it changes
   // useEffect(() => {
@@ -589,6 +628,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "ADD_DATASET", payload: mergedDataset });
   };
 
+  const setGlobalFilters = useCallback((filters: GlobalFilterState) => {
+    updateGlobalFilters(filters, state.activeDatasetIds);
+  }, [updateGlobalFilters, state.activeDatasetIds]);
+
+  const getFilteredDataCountForFilters = useCallback((filters: GlobalFilterState) => {
+    return getFilteredDataCount(state.data, filters);
+  }, [getFilteredDataCount, state.data]);
   return (
     <AppContext.Provider
       value={{
@@ -597,6 +643,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setActiveTab,
         setFilters,
         setSettings,
+        setGlobalFilters,
+        clearGlobalFilters: resetGlobalFilters,
+        getFilteredDataCount: getFilteredDataCountForFilters,
         toggleDatasetActive,
         removeDataset,
         addDrillDownFilter,

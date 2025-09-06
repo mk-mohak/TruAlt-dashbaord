@@ -18,6 +18,8 @@ import { ExportUtils } from "../utils/exportUtils";
 import { SavedFilters } from "./SavedFilters";
 import { Database, Wifi, WifiOff } from "lucide-react";
 import { DatabaseSyncIndicator } from "./DatabaseSyncIndicator";
+import { GlobalFilterIndicator } from "./filters/GlobalFilterIndicator";
+import { GlobalFilterPanel } from "./filters/GlobalFilterPanel";
 import { useAuth } from "../hooks/useAuth";
 // @ts-ignore
 import logoDark from "../assets/TrualtLogo2.png";
@@ -82,6 +84,7 @@ export function Header({
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showUploadMenu, setShowUploadMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showGlobalFilters, setShowGlobalFilters] = useState(false);
   const [tempFilters, setTempFilters] = useState({
     dateRange: { start: "", end: "" },
     selectedValues: {} as { [column: string]: string[] },
@@ -272,6 +275,13 @@ export function Header({
 
           {/* Saved Filters */}
           {state.data.length > 0 && <SavedFilters />}
+
+          {/* Global Filters */}
+          {state.data.length > 0 && (
+            <GlobalFilterIndicator 
+              onOpenFilters={() => setShowGlobalFilters(true)}
+            />
+          )}
 
           {/* Global Filters */}
           {state.data.length > 0 && (
@@ -506,6 +516,12 @@ export function Header({
         </div>
       </div>
 
+      {/* Global Filter Panel */}
+      <GlobalFilterPanel 
+        isOpen={showGlobalFilters}
+        onToggle={() => setShowGlobalFilters(false)}
+      />
+
       {/* Active Filters Display */}
       {state.data.length > 0 && hasGlobalFilters && (
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -580,6 +596,45 @@ export function Header({
                 ))}
             </div>
           </div>
+          
+          {/* Global Filter Status */}
+          {(state.globalFilters.dateRange.fromDate || 
+            state.globalFilters.dateRange.toDate || 
+            state.globalFilters.selectedMonths.length > 0 || 
+            state.globalFilters.selectedBuyerTypes.length > 0) && (
+            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Global Filters:
+                  </span>
+                  
+                  {state.globalFilters.dateRange.fromDate && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {new Date(state.globalFilters.dateRange.fromDate).toLocaleDateString()} - {state.globalFilters.dateRange.toDate ? new Date(state.globalFilters.dateRange.toDate).toLocaleDateString() : 'ongoing'}
+                    </span>
+                  )}
+                  
+                  {state.globalFilters.selectedMonths.length > 0 && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary-100 dark:bg-secondary-900/50 text-secondary-700 dark:text-secondary-300">
+                      {state.globalFilters.selectedMonths.length === 1 
+                        ? state.globalFilters.selectedMonths[0]
+                        : `${state.globalFilters.selectedMonths.length} months`
+                      }
+                    </span>
+                  )}
+                  
+                  {state.globalFilters.selectedBuyerTypes.length > 0 && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent-100 dark:bg-accent-900/50 text-accent-700 dark:text-accent-300">
+                      <Users className="h-3 w-3 mr-1" />
+                      {state.globalFilters.selectedBuyerTypes.join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </header>

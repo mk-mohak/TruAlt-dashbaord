@@ -14,6 +14,7 @@ interface DataTableProps {
   selectedRecords?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
   showActions?: boolean;
+  idColumn?: string;
 }
 
 interface ColumnConfig {
@@ -121,7 +122,8 @@ export function DataTable({
   onDelete,
   selectedRecords = [],
   onSelectionChange,
-  showActions = false
+  showActions = false,
+  idColumn = 'id'
 }: DataTableProps) {
   const { state } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,11 +153,11 @@ export function DataTable({
   }, [data]);
 
   const idColumnKey = useMemo(() => {
-    if (data.length > 0 && 'id' in data[0]) {
-      return 'id';
+    if (data.length > 0 && idColumn in data[0]) {
+      return idColumn;
     }
     return columns.length > 0 ? columns[0].key : '';
-  }, [data, columns]);
+  }, [data, columns, idColumn]);
 
 
   const filteredAndSortedData = useMemo(() => {

@@ -3,6 +3,8 @@ import { FlexibleDataRow } from '../../types';
 import { DataProcessor } from '../../utils/dataProcessing';
 import { useApp } from '../../contexts/AppContext';
 import { DataTable } from '../DataTable';
+import { FilterCompatibilityWarning } from '../filters/FilterCompatibilityWarning';
+import { GlobalFilterProcessor } from '../../utils/globalFilterProcessor';
 
 interface ExplorerTabProps {
   data: FlexibleDataRow[];
@@ -12,6 +14,10 @@ export function ExplorerTab({ data }: ExplorerTabProps) {
   const { state, getMultiDatasetData } = useApp();
   const multiDatasetData = getMultiDatasetData();
   const isMultiDataset = multiDatasetData.length > 1;
+
+  // Validate global filters for current dataset
+  const filterValidation = GlobalFilterProcessor.validateFilters(data, state.globalFilters);
+  const filterStats = GlobalFilterProcessor.getFilterStatistics(data, state.filteredData, state.globalFilters);
 
   if (data.length === 0) {
     return (
@@ -33,6 +39,15 @@ export function ExplorerTab({ data }: ExplorerTabProps) {
   if (isMultiDataset) {
     return (
       <div className="space-y-8">
+        {/* Global Filter Compatibility Warning */}
+        {(filterValidation.warnings.length > 0 || filterStats.filteredCount === 0) && (filterStats.hasDateFilter || filterStats.hasMonthFilter || filterStats.hasBuyerTypeFilter) && (
+          <FilterCompatibilityWarning
+            warnings={filterValidation.warnings}
+            resultCount={filterStats.filteredCount}
+            totalCount={filterStats.originalCount}
+          />
+        )}
+
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Data Explorer - Multiple Datasets
@@ -100,6 +115,15 @@ export function ExplorerTab({ data }: ExplorerTabProps) {
   // Single dataset view (existing functionality)
   return (
     <div className="space-y-6">
+      {/* Global Filter Compatibility Warning */}
+      {(filterValidation.warnings.length > 0 || filterStats.filteredCount === 0) && (filterStats.hasDateFilter || filterStats.hasMonthFilter || filterStats.hasBuyerTypeFilter) && (
+        <FilterCompatibilityWarning
+          warnings={filterValidation.warnings}
+          resultCount={filterStats.filteredCount}
+          totalCount={filterStats.originalCount}
+        />
+      )}
+
       <div className="card">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Data Explorer

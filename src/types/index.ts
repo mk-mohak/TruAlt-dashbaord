@@ -70,6 +70,15 @@ export interface FilterState {
   };
 }
 
+export interface GlobalFilterState {
+  dateRange: {
+    fromDate: string;
+    toDate: string;
+  };
+  selectedMonths: string[];
+  selectedBuyerTypes: string[];
+}
+
 export interface ChartType {
   id: string;
   name: string;

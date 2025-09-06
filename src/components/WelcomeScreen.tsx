@@ -1,7 +1,10 @@
 import React from 'react';
+import { useState } from 'react';
 import { BarChart3, Upload, Zap, Shield, Globe, TrendingUp } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { DatabaseStatus } from './DatabaseStatus';
+import { GlobalFilterIndicator } from './filters/GlobalFilterIndicator';
+import { GlobalFilterPanel } from './filters/GlobalFilterPanel';
 
 interface WelcomeScreenProps {
   onFileUpload: () => void;
@@ -9,6 +12,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onFileUpload }: WelcomeScreenProps) {
   const { state } = useApp();
+  const [showGlobalFilters, setShowGlobalFilters] = useState(false);
 
   const features = [
     {
@@ -177,6 +181,12 @@ export function WelcomeScreen({ onFileUpload }: WelcomeScreenProps) {
           </div>
         </div>
       </div>
+
+      {/* Global Filter Panel */}
+      <GlobalFilterPanel 
+        isOpen={showGlobalFilters}
+        onToggle={() => setShowGlobalFilters(false)}
+      />
     </div>
   );
 }

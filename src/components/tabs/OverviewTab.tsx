@@ -12,6 +12,8 @@ import { StockKPICards } from "../charts/StockKPICards";
 import { RevenueKPICards } from "../charts/RevenueKPICards";
 import { useApp } from "../../contexts/AppContext";
 import { DrillDownBreadcrumb } from "../DrillDownBreadcrumb";
+import { FilterCompatibilityWarning } from "../filters/FilterCompatibilityWarning";
+import { GlobalFilterProcessor } from "../../utils/globalFilterProcessor";
 import { DataProcessor } from "../../utils/dataProcessing";
 import { ColorManager } from "../../utils/colorManager";
 
@@ -23,6 +25,10 @@ export function OverviewTab({ data }: OverviewTabProps) {
   const { state } = useApp();
   const { filteredData } = state;
   const isDarkMode = state.settings.theme === "dark";
+
+  // Validate global filters for current dataset
+  const filterValidation = GlobalFilterProcessor.validateFilters(data, state.globalFilters);
+  const filterStats = GlobalFilterProcessor.getFilterStatistics(data, filteredData, state.globalFilters);
 
   // Check if MDA claim data is available
   const hasMDAClaimData = state.datasets.some(
@@ -74,6 +80,15 @@ export function OverviewTab({ data }: OverviewTabProps) {
   return (
     <div className="space-y-6">
       <DrillDownBreadcrumb />
+
+      {/* Global Filter Compatibility Warning */}
+      {(filterValidation.warnings.length > 0 || filterStats.filteredCount === 0) && filterStats.hasDateFilter || filterStats.hasMonthFilter || filterStats.hasBuyerTypeFilter && (
+        <FilterCompatibilityWarning
+          warnings={filterValidation.warnings}
+          resultCount={filterStats.filteredCount}
+          totalCount={filterStats.originalCount}
+        />
+      )}
 
       {/* Dataset-Specific KPI Cards */}
       <div className="grid grid-cols-1 gap-4">
