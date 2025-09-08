@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import { FlexibleDataRow } from "../../types";
 import { ChartContainer } from "./ChartContainer";
 import { useApp } from "../../contexts/AppContext";
 
@@ -186,7 +185,10 @@ export function StockAnalysisChart({
 
   if (!processedData.hasData) return null;
 
-  const createChartOptions = (categories: string[]): ApexOptions => ({
+  const createChartOptions = (
+    categories: string[],
+    series: any[]
+  ): ApexOptions => ({
     chart: {
       type: chartType,
       background: "transparent",
@@ -194,7 +196,6 @@ export function StockAnalysisChart({
       height: 420,
       animations: {
         enabled: true,
-        easing: "easeinout",
         speed: 800,
         animateGradually: { enabled: false },
         dynamicAnimation: { enabled: true, speed: 900 },
@@ -203,12 +204,27 @@ export function StockAnalysisChart({
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: "50%",
+        columnWidth: "40%",
         borderRadius: 4,
         dataLabels: { position: "top" },
       },
     },
-    fill: { opacity: chartType === "area" ? 0.3 : 1, type: "solid" },
+
+    fill: {
+      type: chartType === "area" ? "gradient" : "solid",
+      colors: series.map((s) => s.color),
+      gradient:
+        chartType === "area"
+          ? {
+              shadeIntensity: 1,
+              type: "vertical",
+              opacityFrom: 0.8,
+              opacityTo: 0.4,
+              stops: [0, 100],
+            }
+          : undefined,
+      opacity: chartType === "area" ? 1 : 1,
+    },
     stroke: { curve: "smooth", width: chartType === "area" ? 2 : 0 },
     dataLabels: { enabled: false },
     xaxis: {
@@ -239,6 +255,7 @@ export function StockAnalysisChart({
       labels: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
     },
     grid: { borderColor: isDarkMode ? "#374151" : "#e5e7eb" },
+    colors: series.map((s) => s.color),
   });
 
   const renderChart = (
@@ -246,7 +263,7 @@ export function StockAnalysisChart({
     title: string
   ) => {
     if (!data) return null;
-    const options = createChartOptions(data.categories);
+    const options = createChartOptions(data.categories, data.series);
     return (
       <ChartContainer
         title={title}

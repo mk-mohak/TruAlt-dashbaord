@@ -1,48 +1,69 @@
-import React, { useState, useMemo } from 'react';
-import Chart from 'react-apexcharts';
-import { ApexOptions } from 'apexcharts';
-import { FlexibleDataRow } from '../../types';
-import { ChartContainer } from './ChartContainer';
-import { useApp } from '../../contexts/AppContext';
-import { DataProcessor } from '../../utils/dataProcessing';
-import { Database } from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import Chart from "react-apexcharts";
+import { ApexOptions } from "apexcharts";
+import { ChartContainer } from "./ChartContainer";
+import { useApp } from "../../contexts/AppContext";
+import { DataProcessor } from "../../utils/dataProcessing";
+import { Database } from "lucide-react";
 
 // Use the same color function for consistency
 const getDatasetColorByName = (datasetName: string) => {
   const lowerName = datasetName.toLowerCase();
-  
+
   // Fixed color mapping based on dataset type
-  if (lowerName.includes('pos') && lowerName.includes('fom') && !lowerName.includes('lfom')) {
-    return '#3b82f6'; // Blue for POS FOM
-  } else if (lowerName.includes('pos') && lowerName.includes('lfom')) {
-    return '#7ab839'; // Green for POS LFOM
-  } else if (lowerName.includes('lfom') && !lowerName.includes('pos')) {
-    return '#7ab839'; // Green for LFOM
-  } else if (lowerName.includes('fom') && !lowerName.includes('pos') && !lowerName.includes('lfom')) {
-    return '#f97316'; // Orange for FOM
+  if (
+    lowerName.includes("pos") &&
+    lowerName.includes("fom") &&
+    !lowerName.includes("lfom")
+  ) {
+    return "#3b82f6"; // Blue for POS FOM
+  } else if (lowerName.includes("pos") && lowerName.includes("lfom")) {
+    return "#7ab839"; // Green for POS LFOM
+  } else if (lowerName.includes("lfom") && !lowerName.includes("pos")) {
+    return "#7ab839"; // Green for LFOM
+  } else if (
+    lowerName.includes("fom") &&
+    !lowerName.includes("pos") &&
+    !lowerName.includes("lfom")
+  ) {
+    return "#f97316"; // Orange for FOM
   }
-  
+
   // Fallback colors for other datasets
   const baseColors = [
-    '#ef4444', '#8b5cf6', '#06b6d4', '#f59e0b', '#dc2626', '#84cc16', '#059669'
+    "#ef4444",
+    "#8b5cf6",
+    "#06b6d4",
+    "#f59e0b",
+    "#dc2626",
+    "#84cc16",
+    "#059669",
   ];
-  
+
   return baseColors[Math.abs(datasetName.length) % baseColors.length];
 };
 
 const getDatasetDisplayName = (datasetName: string) => {
   const lowerName = datasetName.toLowerCase();
-  
-  if (lowerName.includes('pos') && lowerName.includes('fom') && !lowerName.includes('lfom')) {
-    return 'POS FOM';
-  } else if (lowerName.includes('pos') && lowerName.includes('lfom')) {
-    return 'POS LFOM';
-  } else if (lowerName.includes('lfom') && !lowerName.includes('pos')) {
-    return 'LFOM';
-  } else if (lowerName.includes('fom') && !lowerName.includes('pos') && !lowerName.includes('lfom')) {
-    return 'FOM';
+
+  if (
+    lowerName.includes("pos") &&
+    lowerName.includes("fom") &&
+    !lowerName.includes("lfom")
+  ) {
+    return "POS FOM";
+  } else if (lowerName.includes("pos") && lowerName.includes("lfom")) {
+    return "POS LFOM";
+  } else if (lowerName.includes("lfom") && !lowerName.includes("pos")) {
+    return "LFOM";
+  } else if (
+    lowerName.includes("fom") &&
+    !lowerName.includes("pos") &&
+    !lowerName.includes("lfom")
+  ) {
+    return "FOM";
   }
-  
+
   return datasetName;
 };
 
@@ -50,11 +71,13 @@ interface DatasetTimeSeriesChartProps {
   className?: string;
 }
 
-export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChartProps) {
+export function DatasetTimeSeriesChart({
+  className = "",
+}: DatasetTimeSeriesChartProps) {
   const { state, getMultiDatasetData } = useApp();
-  const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('line');
-  const isDarkMode = state.settings.theme === 'dark';
-  
+  const [chartType, setChartType] = useState<"line" | "area" | "bar">("line");
+  const isDarkMode = state.settings.theme === "dark";
+
   const multiDatasetData = getMultiDatasetData();
   const isMultiDataset = multiDatasetData.length > 1;
 
@@ -69,14 +92,14 @@ export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChar
 
     // Process each active dataset
     state.datasets
-      .filter(dataset => state.activeDatasetIds.includes(dataset.id))
+      .filter((dataset) => state.activeDatasetIds.includes(dataset.id))
       .forEach((dataset, index) => {
         // Find quantity and month columns
-        const quantityColumn = Object.keys(dataset.data[0] || {}).find(col => 
-          col.toLowerCase() === 'quantity'
+        const quantityColumn = Object.keys(dataset.data[0] || {}).find(
+          (col) => col.toLowerCase() === "quantity"
         );
-        const monthColumn = Object.keys(dataset.data[0] || {}).find(col => 
-          col.toLowerCase() === 'month'
+        const monthColumn = Object.keys(dataset.data[0] || {}).find(
+          (col) => col.toLowerCase() === "month"
         );
 
         if (!quantityColumn || !monthColumn) {
@@ -85,11 +108,11 @@ export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChar
 
         // Group by month and sum quantities
         const monthlyData = new Map<string, number>();
-        
-        dataset.data.forEach(row => {
-          const month = String(row[monthColumn] || '').trim();
-          const quantity = parseFloat(String(row[quantityColumn] || '0')) || 0;
-          
+
+        dataset.data.forEach((row) => {
+          const month = String(row[monthColumn] || "").trim();
+          const quantity = parseFloat(String(row[quantityColumn] || "0")) || 0;
+
           if (month && quantity > 0) {
             allMonths.add(month);
             const currentTotal = monthlyData.get(month) || 0;
@@ -102,31 +125,43 @@ export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChar
           name: DataProcessor.getDatasetDisplayName(dataset.name),
           data: monthlyData,
           color: DataProcessor.getDatasetColorByName(dataset.name),
-          datasetId: dataset.id
+          datasetId: dataset.id,
         });
       });
 
     // Sort months chronologically
     const sortedMonths = Array.from(allMonths).sort((a, b) => {
-      const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthOrder = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
       return monthOrder.indexOf(a) - monthOrder.indexOf(b);
     });
 
     // Create final series with aligned data
-    const finalSeries = datasetSeries.map(series => ({
+    const finalSeries = datasetSeries.map((series) => ({
       name: series.name,
-      data: sortedMonths.map(month => {
+      data: sortedMonths.map((month) => {
         const value = series.data.get(month) || 0;
         return Math.round(value * 100) / 100; // Round to 2 decimal places
       }),
-      color: series.color
+      color: series.color,
     }));
 
     return {
       categories: sortedMonths,
       series: finalSeries,
-      hasData: finalSeries.length > 0 && sortedMonths.length > 0
+      hasData: finalSeries.length > 0 && sortedMonths.length > 0,
     };
   }, [state.datasets, state.activeDatasetIds]);
 
@@ -134,9 +169,11 @@ export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChar
     return (
       <ChartContainer
         title="Quantity Trends by Month - All Datasets"
-        availableTypes={['line', 'area', 'bar']}
+        availableTypes={["line", "area", "bar"]}
         currentType={chartType}
-        onChartTypeChange={(type) => setChartType(type as 'line' | 'area' | 'bar')}
+        onChartTypeChange={(type) =>
+          setChartType(type as "line" | "area" | "bar")
+        }
         className={className}
       >
         <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
@@ -155,138 +192,156 @@ export function DatasetTimeSeriesChart({ className = '' }: DatasetTimeSeriesChar
   const chartOptions: ApexOptions = {
     chart: {
       type: chartType,
-      background: 'transparent',
+      background: "transparent",
       toolbar: { show: false },
       animations: {
         enabled: true,
-        easing: 'easeinout',
-        speed: 800
-      }
+        speed: 800,
+        animateGradually: {
+          enabled: true,
+          delay: 150,
+        },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 350,
+        },
+      },
     },
-    
+
     stroke: {
-      curve: 'smooth',
-      width: chartType === 'line' ? 4 : chartType === 'area' ? 3 : 0,
+      curve: "smooth",
+      width: chartType === "line" ? 4 : chartType === "area" ? 3 : 0,
     },
-    
+
     fill: {
-      type: chartType === 'area' ? 'gradient' : 'solid',
-      gradient: chartType === 'area' ? {
-        shadeIntensity: 1,
-        type: 'vertical',
-        colorStops: processTimeSeriesData.series.map((series, index) => [
-          { offset: 0, color: series.color, opacity: 0.8 },
-          { offset: 100, color: series.color, opacity: 0.1 }
-        ]).flat()
-      } : undefined
+      type: chartType === "area" ? "gradient" : "solid",
+      gradient:
+        chartType === "area"
+          ? {
+              shadeIntensity: 1,
+              type: "vertical",
+              opacityFrom: 0.7,
+              opacityTo: 0.1,
+              stops: [0, 100],
+            }
+          : undefined,
+      colors: processTimeSeriesData.series.map((s) => s.color),
     },
-    
+
     dataLabels: { enabled: false },
-    
+
     xaxis: {
       categories: processTimeSeriesData.categories,
       labels: {
-        style: { colors: isDarkMode ? '#9ca3af' : '#6b7280' },
-        rotate: processTimeSeriesData.categories.length > 6 ? -45 : 0
+        style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
+        rotate: processTimeSeriesData.categories.length > 6 ? -45 : 0,
       },
       title: {
-        text: 'Months',
-        style: { color: isDarkMode ? '#9ca3af' : '#6b7280' }
-      }
+        text: "Months",
+        style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
+      },
     },
-    
+
     yaxis: {
       labels: {
         formatter: (val: number) => {
-          return val.toLocaleString('en-US', {
+          return val.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
           });
         },
-        style: { colors: isDarkMode ? '#9ca3af' : '#6b7280' }
+        style: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
       },
       title: {
-        text: 'Total Quantity',
-        style: { color: isDarkMode ? '#9ca3af' : '#6b7280' }
-      }
+        text: "Total Quantity",
+        style: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
+      },
     },
-    
-    colors: processTimeSeriesData.series.map(s => s.color),
-    
-    theme: { mode: isDarkMode ? 'dark' : 'light' },
-    
-    grid: { 
-      borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+
+    colors: processTimeSeriesData.series.map((s) => s.color),
+
+    theme: { mode: isDarkMode ? "dark" : "light" },
+
+    grid: {
+      borderColor: isDarkMode ? "#374151" : "#e5e7eb",
       padding: {
         top: 0,
         right: 10,
         bottom: 0,
-        left: 10
-      }
+        left: 10,
+      },
     },
-    
+
     tooltip: {
-      theme: isDarkMode ? 'dark' : 'light',
+      theme: isDarkMode ? "dark" : "light",
       shared: true,
       intersect: false,
       y: {
         formatter: (val: number) => {
-          return `${val.toLocaleString('en-US', {
+          return `${val.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
           })} mt`;
-        }
-      }
+        },
+      },
     },
-    
+
     legend: {
       show: true,
-      position: 'top',
-      labels: { colors: isDarkMode ? '#9ca3af' : '#6b7280' },
+      position: "top",
+      labels: { colors: isDarkMode ? "#9ca3af" : "#6b7280" },
       markers: {
         width: 12,
         height: 12,
-        radius: 6
-      }
+        radius: 6,
+      },
     },
-    
+
     markers: {
-      size: chartType === 'line' ? 6 : 0,
-      colors: processTimeSeriesData.series.map(s => s.color),
-      strokeColors: '#ffffff',
+      size: chartType === "line" ? 6 : 0,
+      colors: processTimeSeriesData.series.map((s) => s.color),
+      strokeColors: "#ffffff",
       strokeWidth: 2,
-      hover: { size: 8 }
+      hover: { size: 8 },
     },
-    
+
     plotOptions: {
       bar: {
         borderRadius: 4,
-        columnWidth: '75%',
-        dataLabels: { position: 'top' }
-      }
+        columnWidth: "55%",
+        dataLabels: { position: "top" },
+        distributed: false,
+      },
     },
-    
-    responsive: [{
-      breakpoint: 768,
-      options: {
-        legend: { position: 'bottom' },
-        xaxis: {
-          labels: { rotate: -90 }
-        }
-      }
-    }]
+
+    responsive: [
+      {
+        breakpoint: 768,
+        options: {
+          legend: { position: "bottom" },
+          xaxis: {
+            labels: { rotate: -90 },
+          },
+        },
+      },
+    ],
   };
 
   return (
     <ChartContainer
-      title={`Quantity Trends by Month${isMultiDataset ? ' - Dataset Comparison' : ''}`}
-      availableTypes={['line', 'area', 'bar']}
+      title={`Quantity Trends by Month${
+        isMultiDataset ? " - Dataset Comparison" : ""
+      }`}
+      availableTypes={["line", "area", "bar"]}
       currentType={chartType}
-      onChartTypeChange={(type) => setChartType(type as 'line' | 'area' | 'bar')}
+      onChartTypeChange={(type) =>
+        setChartType(type as "line" | "area" | "bar")
+      }
       className={className}
     >
       <div className="w-full h-full min-h-[500px]">
         <Chart
+          key={chartType}
           options={chartOptions}
           series={processTimeSeriesData.series}
           type={chartType}

@@ -192,7 +192,7 @@ export function BuyerTypeAnalysisChart() {
       bar: {
         borderRadius: 4,
         horizontal: false,
-        columnWidth: '50%',
+        columnWidth: '30%',
       },
     },
     dataLabels: {
