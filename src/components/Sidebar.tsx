@@ -107,7 +107,7 @@ export function Sidebar({
               </button>
 
               {!isCollapsed && (
-                <h1 className="text-xl font-bold text-[#1A2885] dark:text-gray-100">
+                <h1 className="text-xl font-bold text-[#1A2885] dark:text-gray-100 whitespace-nowrap">
                   TruAlt Analytics
                 </h1>
               )}
@@ -158,7 +158,7 @@ export function Sidebar({
                         />
                       </div>
                       {!isCollapsed && (
-                        <span className="font-medium group-hover:translate-x-1 transition-transform flex-1">
+                        <span className="font-medium group-hover:translate-x-1 transition-transform flex-1 whitespace-nowrap">
                           {item.label}
                         </span>
                       )}

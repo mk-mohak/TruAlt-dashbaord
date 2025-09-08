@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { AppProvider, useApp } from "./contexts/AppContext";
 import { useAuth } from "./hooks/useAuth";
@@ -21,11 +21,11 @@ function DashboardContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
   // This effect sets the default tab based on the user's role after login.
   useEffect(() => {
     if (role && !state.activeTab) {
-      // Only set if no tab is currently active
       if (role === "admin") {
         setActiveTab("overview");
       } else if (role === "operator") {
@@ -33,6 +33,25 @@ function DashboardContent() {
       }
     }
   }, [role, state.activeTab, setActiveTab]);
+
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed((prev) => {
+      const newState = !prev;
+
+      // Dispatch custom event for charts to listen to
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("sidebar-toggle", {
+            detail: { collapsed: newState },
+          })
+        );
+        // Also dispatch a resize event as fallback
+        window.dispatchEvent(new Event("resize"));
+      }, 300); // Match your CSS transition duration
+
+      return newState;
+    });
+  };
 
   useEffect(() => {
     const handleOpenFileUpload = () => setShowFileUpload(true);
@@ -78,7 +97,6 @@ function DashboardContent() {
   }
 
   const renderTabContent = () => {
-
     const filteredData = state.filteredData;
     let tabToRender = state.activeTab;
 
@@ -120,12 +138,13 @@ function DashboardContent() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Sidebar
         isCollapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={handleSidebarToggle}
         isMobileOpen={mobileSidebarOpen}
         onMobileToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
       />
 
       <div
+        ref={mainContentRef}
         className={`transition-all duration-300 ${
           sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
         }`}
